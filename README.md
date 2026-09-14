@@ -78,6 +78,35 @@ azar: no aprende nada y acierta 12 veces de 300.
 Si alguna vez hace falta dar soporte, `PATOS_LAG` en la consola enseña lo que ha
 medido y lo que ha aprendido (en milisegundos).
 
+## Poner el tótem a prueba de dedos
+
+La página hace lo que puede: pide **pantalla completa** en cuanto el cliente
+valida su boleta y lo reintenta en cada toque si alguien sale, corta el pellizco
+para hacer zoom, el barrido lateral que dispara el «atrás», el rebote al
+aporrear y el arrastre de imágenes.
+
+**Pero una página web no puede impedir que se salga del navegador.** Si quedan a
+la vista la barra de título y las pestañas, los dedos las tocan, arrastran la
+ventana y Windows la acopla a un lado de la pantalla. Eso se arregla en el tótem,
+no en el código:
+
+1. **Abrir Chrome en modo tótem.** Crear un acceso directo con este destino:
+
+        "C:\Program Files\Google\Chrome\Application\chrome.exe" --kiosk --app=https://juegos-silk.vercel.app
+
+   Así no hay barra de título, ni pestañas, ni barra de direcciones: no queda
+   nada que tocar por error. Se sale con `Alt+F4`.
+
+2. **Dejar solo esa ventana.** Cerrar las demás ventanas de Chrome. Si hay otra
+   abierta detrás, Windows ofrece la vista dividida y acaba encogiendo el juego.
+
+3. **Apagar el acople de ventanas de Windows.** Configuración → Sistema →
+   Multitarea → desactivar *Acoplar ventanas*. Es lo que saca el cartel de
+   «la vista dividida facilita…» que aparece al arrastrar.
+
+4. **Arrancarlo solo con Windows.** Poner ese acceso directo en
+   `shell:startup` para que el tótem quede listo tras un reinicio.
+
 ## Premios al cumplir el objetivo
 
 Cuando alguien cumple el objetivo de un juego salta la **celebración**: confeti,

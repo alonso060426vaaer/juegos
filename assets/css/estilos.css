@@ -45,8 +45,20 @@ body{
   -webkit-tap-highlight-color:transparent;
   -webkit-user-select:none;
   user-select:none;
-  touch-action:manipulation;
+  /* pan-y y no "none": deja desplazar en vertical si algun juego no cabe,
+     pero corta el pellizco para hacer zoom y el barrido lateral que en
+     Windows dispara el atras del navegador y el acople de ventanas. */
+  touch-action:pan-y;
+  /* Corta el rebote y el tirar-para-recargar, que en el totem se traducen en
+     que la pagina se mueve sola cuando la gente aporrea la pantalla. */
+  overscroll-behavior:none;
+  /* Nada de arrastrar imagenes ni texto: arrastrar es lo que acaba moviendo
+     la ventana del navegador. */
+  -webkit-user-drag:none;
 }
+
+html{ overscroll-behavior:none; }
+img, canvas{ -webkit-user-drag:none; user-drag:none; }
 
 button{ font:inherit; color:inherit; }
 

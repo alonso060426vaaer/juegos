@@ -603,6 +603,17 @@
     document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
     document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
 
+    /* Volver a pantalla completa en cuanto se pueda. Sin esto, en el totem
+       quedan a la vista la barra de titulo y las pestanas del navegador: los
+       dedos las tocan, arrastran la ventana y Windows la acopla a un lado.
+       El navegador solo deja pedirlo dentro de un gesto del usuario, asi que
+       se aprovecha cada toque. Cuando ya esta completa no hace nada. */
+    document.addEventListener('pointerdown', pantallaCompleta, true);
+    document.addEventListener('fullscreenchange', function () {
+      /* Si alguien sale (Escape, F11), el siguiente toque la devuelve. */
+      pintarSonido();
+    });
+
     // Permite abrir un juego directamente: index.html#trivia
     var atajo = (location.hash || '').replace('#', '');
     function arrancar() {
@@ -621,10 +632,22 @@
     }
   }
 
+  /** Pide pantalla completa si no lo esta ya. Silencioso si el navegador
+      la rechaza: se volvera a intentar en el proximo toque. */
+  function pantallaCompleta() {
+    if (document.fullscreenElement || document.webkitFullscreenElement) return;
+    var raiz = document.documentElement;
+    var pedir = raiz.requestFullscreen || raiz.webkitRequestFullscreen;
+    if (!pedir) return;
+    try { var r = pedir.call(raiz); if (r && r.catch) r.catch(function () {}); }
+    catch (e) { /* hara falta otro gesto */ }
+  }
+
   global.App = {
     registrar: registrar,
     iniciar: iniciar,
     pintar: pintar,
+    pantallaCompleta: pantallaCompleta,
     menu: irMenu,
     abrir: abrir,
     sonar: sonar,

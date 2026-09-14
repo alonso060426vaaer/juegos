@@ -120,6 +120,10 @@
       }
       autorizado = true;
       comprobante = r.numero;
+      /* Este toque es un gesto del usuario, que es lo unico que el navegador
+         acepta para ponerse a pantalla completa. Es el mejor momento: a
+         partir de aqui empieza el turno y no debe verse nada del navegador. */
+      App.pantallaCompleta();
       aviso.className = 'acceso-aviso bien';
       aviso.textContent = r.tipo + ' ' + r.numero + ' · ¡Adelante!';
       valor.textContent = r.numero;

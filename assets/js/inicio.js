@@ -8,16 +8,12 @@
   function arrancar() {
     App.iniciar();
 
-    /* En el tótem conviene pantalla completa: se activa con el primer toque
-       (los navegadores no permiten hacerlo sin una interacción del usuario). */
-    var yaPedido = false;
-    document.addEventListener('pointerdown', function () {
-      if (yaPedido) return;
-      yaPedido = true;
-      var raiz = document.documentElement;
-      var pedir = raiz.requestFullscreen || raiz.webkitRequestFullscreen;
-      if (pedir) { try { pedir.call(raiz); } catch (e) { /* el navegador lo rechazó */ } }
-    }, { once: true });
+    /* En el tótem conviene pantalla completa. Antes se pedía UNA sola vez:
+       si el navegador lo rechazaba o alguien salía con Escape, ya no volvía a
+       intentarse y quedaban a la vista las pestañas y la barra de título, que
+       es justo lo que la gente toca sin querer. Ahora lo lleva el núcleo y lo
+       reintenta en cada toque hasta conseguirlo. */
+    App.pantallaCompleta();
   }
 
   if (document.readyState === 'loading') {
