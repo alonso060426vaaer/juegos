@@ -23,14 +23,38 @@
 
   var PATOS_RONDA = 6;                           // patos por ronda
   var TIROS = 3;                                 // tiros por pato, como en el original
-  var RADIO_TIRO = 8.2;                          // margen de acierto al tocar
+  var RADIO_TIRO = 7;                            // margen de acierto al tocar
   var OBJETIVO = 3;                              // llegar a esta ronda da premio
 
-  /* La pantalla tactil del totem tarda un poco en registrar el toque, y para
-     entonces el pato ya se ha movido. Por eso vale tambien acertarle donde
-     estaba hace un instante: se guarda su rastro de los ultimos segundos.
-     Si el tactil fuera aun mas lento, sube este numero. */
-  var INDULGENCIA = 0.40;                        // segundos de rastro que cuentan
+  /* ---------------------------------------------------------------
+     COMPENSACION DEL RETRASO TACTIL
+
+     Entre que el dedo toca el cristal y que este codigo se entera pasa un
+     rato, y en ese rato el pato ya se ha movido. Perdonar a ciegas (dar por
+     bueno cualquier sitio donde el pato estuviera en el ultimo medio
+     segundo) arregla el retraso, pero tambien regala aciertos: hay que
+     bajar la velocidad para que no cante, y entonces el juego aburre.
+
+     Aqui se hace al reves: se calcula CUANDO toco el dedo de verdad y se
+     mira donde estaba el pato EN ESE INSTANTE. Es lo que hacen los juegos
+     de disparos en red para compensar el lag. Perdona el retraso, no la
+     punteria, asi que el pato puede volar rapido sin ser injusto.
+
+     El navegador marca cada toque con la hora en que ocurrio (e.timeStamp)
+     y va en la misma escala que el reloj de los fotogramas, asi que esa
+     parte se mide sola, sin suponer nada. Lo unico a calibrar a mano es
+     LAG_PANTALLA: lo que tarda el panel en pintar y el cristal en
+     reaccionar, que no queda registrado en ninguna parte.
+
+     PARA CALIBRARLO EN EL TOTEM: abre la consola del navegador y escribe
+         PATOS_LAG_DEBUG = true
+     juega media docena de patos y mira
+         PATOS_LAG
+     El campo "media" son milisegundos. Divide entre 1000 y ponlo abajo.
+     --------------------------------------------------------------- */
+  var LAG_PANTALLA  = 0.06;   // segundos que la pantalla va por detras (calibrable)
+  var VENTANA_TOQUE = 0.08;   // margen de error alrededor del instante medido
+  var INDULGENCIA   = 0.40;   // cuanto rastro se guarda, y red de seguridad
 
   /* Tres especies: cuanto mas oscura, menos sale y mas puntos da. */
   var TIPOS = [
@@ -421,7 +445,7 @@
       function nuevoPato() {
         var tipo = BOLSA[entero(0, BOLSA.length - 1)];
         /* Cada pato tiene su propio genio: unos van mas rapidos que otros. */
-        var vel = Math.min(50, 30 + ronda * 3.5) * (0.9 + Math.random() * 0.3);
+        var vel = Math.min(70, 42 + ronda * 5) * (0.9 + Math.random() * 0.35);
         /* Sale siempre hacia arriba (esta al ras del agua) pero con mucho abanico. */
         var ang = -Math.PI / 2 + (Math.random() * 1.7 - 0.85);
         return {
@@ -436,13 +460,17 @@
           giro: 0,
           estado: 'vuela',
           rastro: [],                            // por donde ha pasado hace poco
-          vida: Math.max(3.4, 6.2 - ronda * 0.4),  // segundos antes de largarse
-          cambio: 0.6
+          vida: Math.max(2.4, 5.0 - ronda * 0.45), // segundos antes de largarse
+          cambio: 0.45
         };
       }
 
       /* ------------------------- Disparo ------------------------- */
-      function tocar(x, y) {
+      /* tToque es el momento de la partida en que el dedo toco de verdad
+         (ver COMPENSACION DEL RETRASO TACTIL arriba). Llega null solo si el
+         navegador no dio una hora fiable; entonces se cae a la red de
+         seguridad del final. */
+      function tocar(x, y, tToque) {
         if (terminado) return;
         if (fase !== 'volando' || !pato || tiros <= 0) return;
 
@@ -452,12 +480,29 @@
         pintarHud();
 
         var margen = RADIO_TIRO * zoom;
+        var i, r;
+
+        /* 1. Donde esta ahora mismo: pantalla rapida, o buena punteria. */
         if (cerca(x, y, pato.x, pato.y, margen)) { acertar(); return; }
 
-        /* Vale tambien donde estaba hace un instante: compensa el retraso
-           de la pantalla tactil. */
-        for (var i = pato.rastro.length - 1; i >= 0; i--) {
-          var r = pato.rastro[i];
+        /* 2. Donde estaba cuando el dedo toco. Esto es la compensacion: se
+           mira solo esa franja del rastro, no el rastro entero, para no
+           regalar aciertos de sitios donde el pato estuvo hace mucho. */
+        if (tToque !== null && tToque !== undefined) {
+          for (i = pato.rastro.length - 1; i >= 0; i--) {
+            r = pato.rastro[i];
+            if (r.t > tToque + VENTANA_TOQUE) continue;   // aun demasiado nuevo
+            if (r.t < tToque - VENTANA_TOQUE) break;      // ya demasiado viejo
+            if (cerca(x, y, r.x, r.y, margen)) { acertar(); return; }
+          }
+          if (tiros === 0) escapar('Sin tiros: se escapó');
+          return;
+        }
+
+        /* 3. Red de seguridad: sin hora del toque se perdona a lo bruto,
+           como antes. Es peor, pero mejor que no acertar nunca. */
+        for (i = pato.rastro.length - 1; i >= 0; i--) {
+          r = pato.rastro[i];
           if (tiempo - r.t > INDULGENCIA) break;
           if (cerca(x, y, r.x, r.y, margen)) { acertar(); return; }
         }
@@ -620,11 +665,11 @@
             /* Quiebro brusco: gira entre 40 y 130 grados a un lado o al otro,
                asi puede salir en cualquier direccion (tambien picando hacia
                abajo) y no hay forma de adivinarle el rumbo. */
-            p.cambio = 0.5 + Math.random() * 0.7;
+            p.cambio = 0.3 + Math.random() * 0.55;
             var rumbo = Math.atan2(p.vy, p.vx);
             var giro = (0.7 + Math.random() * 1.6) * (Math.random() < 0.5 ? -1 : 1);
             var ang = rumbo + giro;
-            var vel = p.base * (Math.random() < 0.18 ? 1.25 : 1);  // acelerones
+            var vel = p.base * (Math.random() < 0.22 ? 1.4 : 1);   // acelerones
             p.vx = Math.cos(ang) * vel;
             p.vy = Math.sin(ang) * vel;
             p.dir = p.vx >= 0 ? 1 : -1;
@@ -1173,10 +1218,37 @@
       }
 
       /* ------------------------- Controles ------------------------- */
+      /* Solo para calibrar: apunta cuanto tarda el toque en llegar.
+         Se enciende desde la consola con  PATOS_LAG_DEBUG = true  */
+      function medirLag(ms) {
+        var L = window.PATOS_LAG ||
+                (window.PATOS_LAG = { n: 0, suma: 0, ultimo: 0, media: 0 });
+        L.ultimo = Math.round(ms);
+        L.n++; L.suma += ms;
+        L.media = Math.round(L.suma / L.n);
+      }
+
       lienzo.addEventListener('pointerdown', function (e) {
         var r = lienzo.getBoundingClientRect();
         if (!r.width) return;
-        tocar((e.clientX - r.left) / r.width * FW, (e.clientY - r.top) / r.height * FH);
+
+        /* e.timeStamp y el reloj de los fotogramas (ultimo) van en la misma
+           escala, asi que restarlos da el retraso real de esta pantalla. */
+        var tToque = null;
+        if (ultimo && e.timeStamp > 0) {
+          var atraso = (ultimo - e.timeStamp) / 1000 + LAG_PANTALLA;
+          /* Si sale disparatado, el navegador usa otro reloj: no fiarse. */
+          if (atraso > -1 && atraso < 1) {
+            if (atraso < 0) atraso = 0;                    // toque mas nuevo que el ultimo cuadro
+            if (atraso > INDULGENCIA) atraso = INDULGENCIA; // no rebobinar mas de lo que hay
+            tToque = tiempo - atraso;
+          }
+          if (window.PATOS_LAG_DEBUG) medirLag(ultimo - e.timeStamp);
+        }
+
+        tocar((e.clientX - r.left) / r.width * FW,
+              (e.clientY - r.top) / r.height * FH,
+              tToque);
       });
 
       window.addEventListener('resize', medir);

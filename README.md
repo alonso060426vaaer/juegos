@@ -51,6 +51,27 @@ Para eso haría falta un servidor que consulte SUNAT o la caja.
 Cuando salta el protector de pantalla (un minuto sin tocar), se vuelve a pedir el
 número: quien llega después es otra persona.
 
+## Pantallas táctiles lentas (Patos al Vuelo)
+
+Entre que el dedo toca el cristal y que el juego se entera pasa un rato, y en ese
+rato el pato ya se ha movido. La tentación es bajar la velocidad, pero eso vuelve
+el juego aburrido sin arreglar la causa.
+
+En vez de eso, `patos.js` **calcula cuándo tocó el dedo de verdad** (el navegador
+marca cada toque con su hora en `e.timeStamp`) y comprueba dónde estaba el pato
+**en ese instante**. Es lo mismo que hacen los juegos de disparos en red con el
+lag: perdona el retraso, no la puntería. Así el pato puede volar rápido sin ser
+injusto.
+
+**Calibrarlo en el tótem.** Solo hay un número que medir: lo que tarda el panel en
+pintar y el cristal en reaccionar. Abre la consola del navegador y escribe:
+
+    PATOS_LAG_DEBUG = true
+
+Juega media docena de patos y mira `PATOS_LAG`. El campo `media` son milisegundos:
+divídelo entre 1000 y ponlo en `LAG_PANTALLA`, al principio de
+`assets/js/juegos/patos.js`. Viene con 0,06 (60 ms) de partida.
+
 ## Premios al cumplir el objetivo
 
 Cuando alguien cumple el objetivo de un juego salta la **celebración**: confeti,
@@ -87,7 +108,7 @@ subirla o bajarla, cada juego tiene sus números arriba del archivo:
 | Mitos y Verdades | `TOTAL` (10 frases) |
 | Adivina la Palabra | `RONDA` (7 palabras), `FICHAS` (14 letras) y `PISTAS_MAX` (2) |
 | Rompe Ladrillos | `VEL_BASE` (68), `PALA_W` (15) y `dobles` en `armar()` |
-| Patos al Vuelo | la velocidad y la `vida` en `nuevoPato()`, el `giro` del quiebro en `moverPato()` y `RADIO_TIRO` (6,5) |
+| Patos al Vuelo | la velocidad y la `vida` en `nuevoPato()`, el `giro` del quiebro en `moverPato()` y `RADIO_TIRO` (7) |
 | Salto Infinito | `BLOQUE_AN` (17), las probabilidades de `movil`/`fragil`/`fantasma` en `nuevoBloque()` y `separacion()` — ojo: el hueco nunca puede pasar de 20, que es lo que alcanza un salto |
 
 ## Se adapta a la pantalla
