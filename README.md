@@ -48,17 +48,17 @@ mismo (icono, nombre y letra pequeña). Los objetivos, uno por juego:
 
 ## Duración y dificultad
 
-Todas las partidas duran **1 minuto y medio como máximo**. El reloj se ve arriba
+Todas las partidas duran **1 minuto como máximo**. El reloj se ve arriba
 a la derecha y se pone rojo en los últimos 15 segundos; al llegar a cero la
 partida se cierra sola y sale el resultado. La duración está en un solo sitio:
-`LIMITE` al principio de `assets/js/nucleo.js` (son segundos, 90 por defecto).
+`LIMITE` al principio de `assets/js/nucleo.js` (son segundos, 60 por defecto).
 
 La dificultad está puesta **alta** en los siete juegos. Si quieres
 subirla o bajarla, cada juego tiene sus números arriba del archivo:
 
 | Juego | Qué tocar |
 |---|---|
-| Memoria | `PAREJAS` (12) y `VISTAZO` (620 ms que se ven las falladas) |
+| Memoria | `PAREJAS` (12), `TOTAL_NUMEROS` (20, la baraja de la que se sacan) y `VISTAZO` (620 ms) |
 | Trivia | `TOTAL` (8 preguntas) |
 | Mitos y Verdades | `TOTAL` (10 frases) |
 | Adivina la Palabra | `RONDA` (7 palabras), `FICHAS` (14 letras) y `PISTAS_MAX` (2) |

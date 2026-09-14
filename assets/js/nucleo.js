@@ -144,7 +144,7 @@
      --------------------------------------------------------------- */
 
   /* Duracion maxima de una partida, igual en todos los juegos. */
-  global.LIMITE = 90;
+  global.LIMITE = 60;
 
   var catalogo = [];            // juegos registrados
   var limpiarActual = null;     // funcion de limpieza del juego en curso

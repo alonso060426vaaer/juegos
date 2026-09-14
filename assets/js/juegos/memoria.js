@@ -30,18 +30,19 @@
      --------------------------------------------------------------- */
   var MODO = 'numeros';
 
-  var COLOR_NUM = ['#F2685C', '#EE6FA0', '#F3B12B', '#2FB5A8', '#5CC79B', '#4EA8E8',
-                   '#9B7EDE', '#FF9488', '#57C2D8', '#E0A53C', '#7BC67E', '#C77DBB'];
-  var FONDO_NUM = ['#FFDDD6', '#FBD9E4', '#FFE9BE', '#CFF0EA', '#D5F2E4', '#CFE6FB',
-                   '#E5DBFA', '#FFE0DA', '#D7EFF6', '#FFF0CC', '#DDF1DC', '#F6DDF0'];
+  /* Hay mas numeros que parejas en el tablero: cada partida saca doce al
+     azar de estos veinte, asi no sale nunca la misma baraja.
+     El color se reparte con el angulo aureo para que los tonos no se repitan. */
+  var TOTAL_NUMEROS = 20;
 
   var NUMEROS = [];
-  for (var n = 1; n <= 12; n++) {
+  for (var n = 1; n <= TOTAL_NUMEROS; n++) {
+    var tono = Math.round((n * 137.5) % 360);
     NUMEROS.push({
       id: 'n' + n,
       nombre: String(n),
-      d: ficha(FONDO_NUM[n - 1],
-          '<circle cx="12" cy="12" r="8.4" fill="' + COLOR_NUM[n - 1] + '" stroke="' + LINEA + '" stroke-width="1.5"/>' +
+      d: ficha('hsl(' + tono + ',72%,91%)',
+          '<circle cx="12" cy="12" r="8.4" fill="hsl(' + tono + ',66%,55%)" stroke="' + LINEA + '" stroke-width="1.5"/>' +
           '<text x="12" y="12.4" text-anchor="middle" dominant-baseline="central" fill="#FFF8EC" ' +
           'font-family="Georgia, serif" font-weight="700" ' +
           'font-size="' + (n > 9 ? 8.4 : 10.4) + '">' + n + '</text>')
