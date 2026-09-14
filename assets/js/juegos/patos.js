@@ -23,8 +23,14 @@
 
   var PATOS_RONDA = 6;                           // patos por ronda
   var TIROS = 3;                                 // tiros por pato, como en el original
-  var RADIO_TIRO = 6.5;                          // margen de acierto al tocar
+  var RADIO_TIRO = 8.2;                          // margen de acierto al tocar
   var OBJETIVO = 3;                              // llegar a esta ronda da premio
+
+  /* La pantalla tactil del totem tarda un poco en registrar el toque, y para
+     entonces el pato ya se ha movido. Por eso vale tambien acertarle donde
+     estaba hace un instante: se guarda su rastro de los ultimos segundos.
+     Si el tactil fuera aun mas lento, sube este numero. */
+  var INDULGENCIA = 0.40;                        // segundos de rastro que cuentan
 
   /* Tres especies: cuanto mas oscura, menos sale y mas puntos da. */
   var TIPOS = [
@@ -415,7 +421,7 @@
       function nuevoPato() {
         var tipo = BOLSA[entero(0, BOLSA.length - 1)];
         /* Cada pato tiene su propio genio: unos van mas rapidos que otros. */
-        var vel = Math.min(70, 42 + ronda * 5) * (0.9 + Math.random() * 0.35);
+        var vel = Math.min(50, 30 + ronda * 3.5) * (0.9 + Math.random() * 0.3);
         /* Sale siempre hacia arriba (esta al ras del agua) pero con mucho abanico. */
         var ang = -Math.PI / 2 + (Math.random() * 1.7 - 0.85);
         return {
@@ -429,8 +435,9 @@
           ala: 0,
           giro: 0,
           estado: 'vuela',
-          vida: Math.max(2.4, 5.0 - ronda * 0.45), // segundos antes de largarse
-          cambio: 0.45
+          rastro: [],                            // por donde ha pasado hace poco
+          vida: Math.max(3.4, 6.2 - ronda * 0.4),  // segundos antes de largarse
+          cambio: 0.6
         };
       }
 
@@ -444,10 +451,23 @@
         App.tono(150, 0.06, 0.12, 'square');
         pintarHud();
 
-        var dx = x - pato.x, dy = y - pato.y;
         var margen = RADIO_TIRO * zoom;
-        if (dx * dx + dy * dy <= margen * margen) acertar();
-        else if (tiros === 0) escapar('Sin tiros: se escapó');
+        if (cerca(x, y, pato.x, pato.y, margen)) { acertar(); return; }
+
+        /* Vale tambien donde estaba hace un instante: compensa el retraso
+           de la pantalla tactil. */
+        for (var i = pato.rastro.length - 1; i >= 0; i--) {
+          var r = pato.rastro[i];
+          if (tiempo - r.t > INDULGENCIA) break;
+          if (cerca(x, y, r.x, r.y, margen)) { acertar(); return; }
+        }
+
+        if (tiros === 0) escapar('Sin tiros: se escapó');
+      }
+
+      function cerca(x, y, px, py, margen) {
+        var dx = x - px, dy = y - py;
+        return dx * dx + dy * dy <= margen * margen;
       }
 
       function acertar() {
@@ -600,17 +620,20 @@
             /* Quiebro brusco: gira entre 40 y 130 grados a un lado o al otro,
                asi puede salir en cualquier direccion (tambien picando hacia
                abajo) y no hay forma de adivinarle el rumbo. */
-            p.cambio = 0.3 + Math.random() * 0.55;
+            p.cambio = 0.5 + Math.random() * 0.7;
             var rumbo = Math.atan2(p.vy, p.vx);
             var giro = (0.7 + Math.random() * 1.6) * (Math.random() < 0.5 ? -1 : 1);
             var ang = rumbo + giro;
-            var vel = p.base * (Math.random() < 0.22 ? 1.4 : 1);   // acelerones
+            var vel = p.base * (Math.random() < 0.18 ? 1.25 : 1);  // acelerones
             p.vx = Math.cos(ang) * vel;
             p.vy = Math.sin(ang) * vel;
             p.dir = p.vx >= 0 ? 1 : -1;
           }
           p.x += p.vx * dt;
           p.y += p.vy * dt;
+
+          p.rastro.push({ x: p.x, y: p.y, t: tiempo });
+          while (p.rastro.length && tiempo - p.rastro[0].t > INDULGENCIA) p.rastro.shift();
 
           if (p.x < 7)      { p.x = 7;      p.dir =  1; p.vx =  Math.abs(p.vx); }
           if (p.x > FW - 7) { p.x = FW - 7; p.dir = -1; p.vx = -Math.abs(p.vx); }
