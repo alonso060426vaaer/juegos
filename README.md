@@ -78,6 +78,21 @@ azar: no aprende nada y acierta 12 veces de 300.
 Si alguna vez hace falta dar soporte, `PATOS_LAG` en la consola enseña lo que ha
 medido y lo que ha aprendido (en milisegundos).
 
+## Dejar el tótem listo de un doble clic
+
+En la carpeta `totem/` hay un instalador que hace todo lo de abajo solo.
+Copiar esa carpeta al tótem (USB, o descargarla del repositorio) y doble clic
+en **`CONFIGURAR-TOTEM.bat`**. Se puede repetir sin problema.
+
+Crea en el Escritorio un acceso **Zona de Juegos** que abre Chrome en modo
+quiosco —sin pestañas, sin barra de direcciones y sin barra de título— con un
+**perfil de Chrome aparte**, para que no comparta ventanas ni sesión con el
+Chrome que use el personal. Luego pregunta si ponerlo en el arranque de
+Windows y si apagar el acople de ventanas (el cartel de «vista dividida» que
+encoge el juego cuando alguien arrastra sin querer).
+
+Para salir del tótem: `Alt + F4`.
+
 ## Instalarlo como aplicación en el tótem
 
 La forma más cómoda de que no se vea nada del navegador, sin instalar ni
