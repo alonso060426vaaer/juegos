@@ -1,0 +1,605 @@
+/* ==========================================================================
+   ESTILOS PROPIOS DE CADA JUEGO
+   ========================================================================== */
+
+.centro{ overflow:auto; }
+
+.pie-accion{ flex:none; margin-top:1.1em; display:flex; }
+.btn-ancho{ width:100%; }
+
+/* ------------------ 1. Memoria ------------------ */
+
+.tablero-memoria{
+  display:grid;
+  grid-template-columns:repeat(4, 1fr);
+  gap:.55em;
+  width:min(100%, 32em);
+  margin:0 auto;
+  perspective:1200px;
+}
+/* En pantalla apaisada caben seis por fila */
+@media (min-aspect-ratio:1/1){
+  .tablero-memoria{ grid-template-columns:repeat(6, 1fr); width:min(100%, 37em); }
+}
+.carta{
+  position:relative;
+  aspect-ratio:1;
+  padding:0;
+  border:0;
+  background:none;
+  cursor:pointer;
+  transform-style:preserve-3d;
+  transition:transform .45s cubic-bezier(.3,.9,.3,1);
+  animation:aparecer .4s backwards;   /* no "both": dejaba fijado transform:none y anulaba el giro */
+}
+.carta.volteada, .carta.lograda{ transform:rotateY(180deg); }
+.carta-cara{
+  position:absolute; inset:0;
+  display:grid; place-items:center;
+  border-radius:var(--r-medio);
+  border:var(--linea);
+  box-shadow:var(--sombra);
+  backface-visibility:hidden;
+  -webkit-backface-visibility:hidden;
+}
+.carta-frente{
+  background:linear-gradient(150deg, var(--oro-claro), var(--oro));
+  color:#FFF6E6;
+  font-size:2em;
+}
+.carta-reverso{
+  transform:rotateY(180deg);
+  background:var(--blanco);
+  padding:5%;
+}
+.carta-reverso svg{ width:100%; height:100%; display:block; }
+.carta.lograda .carta-reverso{
+  background:rgba(78,140,106,.13);
+  border-color:rgba(78,140,106,.5);
+}
+
+/* ------------------ 2 y 3. Preguntas ------------------ */
+
+.enunciado{
+  margin:0 0 1.1em;
+  font-family:var(--serif);
+  font-size:1.9em;
+  font-weight:600;
+  line-height:1.25;
+  text-align:center;
+}
+.opciones{ display:flex; flex-direction:column; gap:.75em; }
+
+/* Botones con canto y su letra en circulo, como en los concursos */
+.opcion{
+  display:flex; align-items:center; gap:.85em;
+  padding:.95em 1.1em;
+  text-align:left;
+  font-size:1.05em;
+  line-height:1.3;
+  background:linear-gradient(180deg, #FFFFFF 0%, #FDF8F0 60%, #F4EADA 100%);
+  border:1px solid rgba(185,146,79,.42);
+  border-radius:var(--r-medio);
+  box-shadow:
+    0 .22em 0 #DCC8A4,
+    0 .35em .7em rgba(90,70,40,.16),
+    inset 0 .07em 0 rgba(255,255,255,.9);
+  cursor:pointer;
+  transition:transform .12s, box-shadow .12s, background .2s, border-color .2s;
+}
+.opcion:active{
+  transform:translateY(.2em);
+  box-shadow:0 .04em 0 #DCC8A4, 0 .1em .25em rgba(90,70,40,.18),
+             inset 0 .07em 0 rgba(255,255,255,.9);
+}
+@media (hover:hover){
+  .opcion:hover{
+    border-color:var(--oro);
+    box-shadow:0 .28em 0 #DCC8A4, 0 .5em .9em rgba(90,70,40,.22),
+               inset 0 .07em 0 rgba(255,255,255,.9);
+  }
+}
+
+.opcion-letra{
+  flex:none;
+  width:2em; height:2em;
+  display:grid; place-items:center;
+  font-family:var(--serif);
+  font-size:1.05em; font-weight:700;
+  color:#FFF8EC;
+  background:linear-gradient(160deg, var(--oro-claro), var(--oro));
+  border-radius:50%;
+  box-shadow:inset 0 -.12em .2em rgba(120,90,45,.35), 0 .1em .2em rgba(90,70,40,.25);
+}
+.opcion-texto{ flex:1; }
+
+.opcion.inactiva{ pointer-events:none; }
+.opcion.correcta{
+  background:linear-gradient(180deg, #F2FAF4 0%, #DCEFE2 100%);
+  border-color:var(--verde);
+  box-shadow:0 .22em 0 #A8CDB6, 0 .35em .7em rgba(60,110,80,.2);
+  color:#2F5C45; font-weight:600;
+}
+.opcion.correcta .opcion-letra{
+  background:linear-gradient(160deg, #6FB48C, #4E8C6A);
+  box-shadow:inset 0 -.12em .2em rgba(35,80,55,.35);
+}
+.opcion.incorrecta{
+  background:linear-gradient(180deg, #FDF2EF 0%, #F3D7CE 100%);
+  border-color:var(--rojo);
+  box-shadow:0 .22em 0 #DBA595, 0 .35em .7em rgba(140,70,55,.2);
+  color:#8D3C2E;
+}
+.opcion.incorrecta .opcion-letra{
+  background:linear-gradient(160deg, #D98675, #C0614F);
+  box-shadow:inset 0 -.12em .2em rgba(110,45,35,.35);
+}
+
+.explicacion{
+  margin-top:1.2em;
+  padding-top:1em;
+  border-top:var(--linea);
+  animation:entrar .3s both;
+}
+.explicacion-titulo{
+  margin:0 0 .3em;
+  font-weight:700;
+  color:var(--oro-osc);
+  letter-spacing:.02em;
+}
+.explicacion-texto{
+  margin:0;
+  font-size:.95em;
+  line-height:1.45;
+  color:var(--tinta-2);
+}
+
+/* ------------------ 3. Mitos y verdades ------------------ */
+
+.tarjeta-mito{ position:relative; text-align:center; padding-top:2.4em; }
+.comilla{
+  position:absolute; top:.05em; left:.35em;
+  font-family:var(--serif);
+  font-size:4.5em; line-height:1;
+  color:var(--crema-3);
+}
+.frase-mito{
+  margin:0;
+  font-family:var(--serif);
+  font-size:2em;
+  font-weight:600;
+  line-height:1.3;
+}
+.veredicto{
+  margin-top:1.3em; padding-top:1em;
+  border-top:var(--linea);
+  text-align:left;
+  animation:entrar .3s both;
+}
+.veredicto-titulo{
+  margin:0 0 .3em;
+  font-weight:700; letter-spacing:.05em;
+  color:var(--oro-osc);
+}
+.veredicto-texto{ margin:0; color:var(--tinta-2); line-height:1.45; }
+
+.juicios{ display:grid; grid-template-columns:1fr 1fr; gap:1em; margin-top:1.4em; }
+.juicios.inactivos{ pointer-events:none; }
+.btn-juicio{
+  display:flex; flex-direction:column; align-items:center; gap:.15em;
+  padding:1.1em .6em;
+  font-size:1.15em; font-weight:600; letter-spacing:.04em;
+  background:var(--blanco);
+  border:2px solid var(--crema-3);
+  border-radius:var(--r-grande);
+  box-shadow:var(--sombra);
+  cursor:pointer;
+  transition:transform .15s, background .2s;
+}
+.btn-juicio:active{ transform:scale(.96); }
+.juicio-emoji{ font-size:1.5em; line-height:1.2; }
+.es-verdad{ color:var(--verde); border-color:rgba(78,140,106,.35); }
+.es-mito{ color:var(--rojo); border-color:rgba(192,97,79,.35); }
+.btn-juicio.acierto{ background:rgba(78,140,106,.16); border-color:var(--verde); }
+.btn-juicio.error{ background:rgba(192,97,79,.16); border-color:var(--rojo); }
+
+/* ====================== 7. ROMPE LADRILLOS ====================== */
+
+.ladrillos-zona{
+  flex:1;
+  min-height:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+}
+/* El tamano exacto lo pone el propio juego; aqui solo el aspecto. */
+.ladrillos{
+  display:block;
+  border:1px solid rgba(185,146,79,.5);
+  border-radius:var(--r-medio);
+  box-shadow:var(--sombra-alta), 0 0 2.5em rgba(120,70,150,.25);
+  background:#241B39;
+  touch-action:none;
+  cursor:pointer;
+}
+/* Los corazones de las vidas, algo mas pequenos que el resto de cifras */
+.dato .val.vidas{
+  font-family:var(--sans);
+  font-size:1.35em;
+  letter-spacing:.06em;
+  color:var(--rojo);
+  line-height:1.45;
+}
+
+/* ====================== 8. PATOS AL VUELO ====================== */
+
+.patos-zona{
+  flex:1;
+  min-height:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+}
+/* El tamano exacto lo pone el propio juego. */
+.patos{
+  display:block;
+  border:var(--linea);
+  border-radius:var(--r-medio);
+  box-shadow:var(--sombra);
+  background:#D3E3EC;
+  touch-action:none;
+  cursor:crosshair;
+}
+/* Los tiros que quedan, en circulos llenos y vacios */
+.dato .val.tiros{
+  font-family:var(--sans);
+  font-size:1.2em;
+  letter-spacing:.18em;
+  color:var(--oro-osc);
+  line-height:1.6;
+}
+
+/* ====================== 9. SALTO INFINITO ====================== */
+
+.saltos-zona{
+  flex:1;
+  min-height:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+}
+/* El tamano exacto lo pone el propio juego. */
+.saltos{
+  display:block;
+  border:var(--linea);
+  border-radius:var(--r-medio);
+  box-shadow:var(--sombra);
+  background:#BEDFF2;
+  touch-action:none;
+  cursor:pointer;
+}
+
+/* ====================== ADIVINA LA PALABRA ====================== */
+
+.fotos{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:.9em;
+  width:min(100%, 27em);
+  margin:0 auto;
+  flex:none;
+}
+/* Cada pista imita una foto revelada: marco blanco, papel de color y relieve */
+.foto{
+  position:relative;
+  aspect-ratio:1;
+  display:grid;
+  place-items:center;
+  padding:.45em;
+  background:#fff;
+  border-radius:var(--r-medio);
+  box-shadow:
+    0 .7em 1.5em rgba(90,70,40,.20),
+    0 .12em .3em rgba(90,70,40,.12);
+  animation:aparecer .4s backwards;
+}
+.foto::before{                       /* el papel de la foto */
+  content:"";
+  position:absolute; inset:.45em;
+  border-radius:calc(var(--r-medio) - .35em);
+  background:var(--papel, var(--crema-2));
+  box-shadow:
+    inset 0 0 2.2em rgba(40,30,15,.18),
+    inset 0 .1em .2em rgba(255,255,255,.5);
+}
+.foto::after{                        /* brillo del papel satinado */
+  content:"";
+  position:absolute; inset:.45em;
+  border-radius:calc(var(--r-medio) - .35em);
+  background:linear-gradient(145deg, rgba(255,255,255,.55) 0%, rgba(255,255,255,0) 42%);
+  pointer-events:none;
+}
+.foto span{
+  position:relative;
+  z-index:1;
+  font-size:4.1em;
+  line-height:1;
+  filter:drop-shadow(0 .07em .09em rgba(40,30,15,.35));
+}
+
+.huecos{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:.4em;
+  margin:1.3em 0 1em;
+  flex:none;
+}
+.hueco{
+  width:2.1em; height:2.6em;
+  padding:0;
+  font-family:var(--serif);
+  font-size:1.7em; font-weight:600;
+  color:var(--tinta);
+  background:rgba(255,255,255,.6);
+  border:1px solid rgba(185,146,79,.35);
+  border-bottom:.16em solid var(--oro-claro);
+  border-radius:.35em;
+  box-shadow:inset 0 .18em .4em rgba(120,95,55,.16);
+  cursor:pointer;
+  transition:background .15s, transform .12s;
+}
+.hueco.lleno{
+  background:linear-gradient(180deg, #FFFDF8, #F2E6D2);
+  box-shadow:0 .18em 0 #CBB085, 0 .3em .5em rgba(90,70,40,.18);
+  border-bottom-color:#CBB085;
+}
+.hueco.lleno:active{ transform:translateY(.1em); }
+.hueco.bien{
+  background:linear-gradient(180deg, #EAF5EE, #CDE6D6);
+  border-color:var(--verde);
+  box-shadow:0 .18em 0 #8FBBA1;
+}
+.hueco.mal{
+  background:linear-gradient(180deg, #FBEAE6, #F0CDC4);
+  border-color:var(--rojo);
+  animation:temblar .35s;
+}
+
+.letras{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:.5em;
+  width:min(100%, 31em);      /* dos filas iguales de siete */
+  margin:0 auto;
+  flex:none;
+}
+/* Fichas con canto, como teclas de verdad */
+.letra-ficha{
+  width:2.5em; height:2.8em;
+  padding:0;
+  font-family:var(--serif);
+  font-size:1.6em; font-weight:600;
+  color:var(--oro-osc);
+  background:linear-gradient(180deg, #FFFDF8 0%, #FBF3E4 55%, #EFE0C8 100%);
+  border:1px solid rgba(185,146,79,.45);
+  border-radius:.45em;
+  box-shadow:
+    0 .22em 0 #CBB085,
+    0 .34em .6em rgba(90,70,40,.25),
+    inset 0 .08em 0 rgba(255,255,255,.9);
+  cursor:pointer;
+  transition:transform .1s, box-shadow .1s, opacity .2s;
+  animation:aparecer .3s backwards;
+}
+.letra-ficha:active{
+  transform:translateY(.2em);
+  box-shadow:0 .04em 0 #CBB085, 0 .08em .2em rgba(90,70,40,.2),
+             inset 0 .08em 0 rgba(255,255,255,.9);
+}
+.letra-ficha.usada{
+  opacity:.25;
+  pointer-events:none;
+  box-shadow:none;
+  transform:translateY(.2em);
+}
+
+/* ====================== TEMA CLINICA (Trivia) ======================
+   Azules suaves de consulta, insignias de color y tarjetas tipo app.
+   Todo cuelga de .tema-clinica para no tocar el resto de juegos.
+   ================================================================== */
+
+.tema-clinica{
+  --az-fuerte:#2F6FBF;
+  --az:#4E96DD;
+  --az-suave:#DCEDFB;
+  --tinta-az:#23456E;
+  --verde-ok:#2FAE84;
+  background:
+    radial-gradient(120% 55% at 50% 0%,   #FFFFFF 0%, transparent 60%),
+    radial-gradient(130% 60% at 50% 100%, #D9ECFA 0%, transparent 65%),
+    linear-gradient(180deg, #EFF7FD 0%, #E4F1FB 100%);
+  color:var(--tinta-az);
+}
+
+/* --- decorado del fondo --- */
+.clinica-deco{ position:absolute; inset:0; overflow:hidden; pointer-events:none; z-index:0; }
+.deco-hojas{ position:absolute; left:-1.5em; top:8%; width:9em; height:15em; }
+.deco-cartel{
+  position:absolute; left:4%; top:34%;
+  padding:1em 1.4em;
+  font-family:var(--serif);
+  font-size:1.05em; line-height:1.35; text-align:center;
+  color:rgba(60,120,180,.42);
+  background:rgba(255,255,255,.5);
+  border-radius:1em;
+  box-shadow:0 .5em 1.4em rgba(80,130,180,.10);
+}
+.deco-cruz{ display:block; font-size:1.5em; color:rgba(70,140,205,.35); margin-bottom:.1em; }
+.deco-corazon{ display:block; color:rgba(70,140,205,.35); }
+.deco-burbuja{
+  position:absolute; border-radius:50%;
+  background:radial-gradient(circle at 35% 30%, rgba(255,255,255,.85), rgba(190,225,250,.35));
+}
+.deco-burbuja.b1{ width:9em; height:9em; right:-2em; top:12%; }
+.deco-burbuja.b2{ width:5em; height:5em; right:6%; top:52%; }
+.deco-burbuja.b3{ width:14em; height:14em; left:-4em; bottom:-4em; }
+
+.tema-clinica > .marcador,
+.tema-clinica > .progreso,
+.tema-clinica > .centro,
+.tema-clinica > .pie-accion{ position:relative; z-index:1; }
+
+/* --- marcador en pastillas --- */
+.tema-clinica .dato{
+  display:flex; align-items:center; gap:.7em;
+  max-width:none;
+  padding:.5em 1.2em .5em .5em;
+  text-align:left;
+  background:rgba(255,255,255,.92);
+  border:1px solid rgba(120,175,225,.35);
+  border-radius:999px;
+  box-shadow:0 .5em 1.2em rgba(70,120,175,.14);
+}
+.tema-clinica .dato-icono{ flex:none; width:2.4em; height:2.4em; display:block; }
+.tema-clinica .dato-icono svg{ width:100%; height:100%; display:block; }
+.tema-clinica .dato-texto{ display:block; }
+.tema-clinica .dato .val{ font-family:var(--serif); color:var(--tinta-az); }
+.tema-clinica .dato .etq{ color:#6F93B8; }
+
+/* --- barra de progreso --- */
+.tema-clinica .progreso{ background:rgba(255,255,255,.75); box-shadow:inset 0 .1em .2em rgba(70,120,175,.12); }
+.tema-clinica .progreso i{ background:linear-gradient(90deg, #6FB3EC, var(--az-fuerte)); }
+
+/* --- tarjeta de la pregunta --- */
+.tema-clinica .panel{
+  background:rgba(255,255,255,.96);
+  border:1px solid rgba(120,175,225,.3);
+  border-radius:1.6em;
+  box-shadow:0 1em 2.4em rgba(70,120,175,.16);
+}
+.pregunta-fila{ display:flex; align-items:flex-start; gap:.8em; margin-bottom:1.1em; }
+.pregunta-icono{ flex:none; width:2.6em; height:2.6em; margin-top:.1em; }
+.pregunta-icono svg{ width:100%; height:100%; display:block; }
+.tema-clinica .enunciado{
+  margin:0; text-align:left;
+  font-family:var(--serif);
+  color:var(--tinta-az);
+}
+
+/* --- opciones --- */
+.tema-clinica .opcion{
+  gap:.8em;
+  background:#fff;
+  border:1px solid rgba(120,175,225,.35);
+  border-radius:999px;
+  box-shadow:0 .3em 0 rgba(150,195,230,.45), 0 .5em .9em rgba(70,120,175,.12);
+  color:var(--tinta-az);
+}
+.tema-clinica .opcion:active{
+  transform:translateY(.24em);
+  box-shadow:0 .06em 0 rgba(150,195,230,.45), 0 .1em .3em rgba(70,120,175,.12);
+}
+@media (hover:hover){
+  .tema-clinica .opcion:hover{
+    border-color:var(--az);
+    box-shadow:0 .4em 0 rgba(150,195,230,.5), 0 .7em 1.2em rgba(70,120,175,.18);
+  }
+}
+.tema-clinica .opcion-letra{
+  width:2.3em; height:2.3em;
+  font-family:var(--sans); font-weight:700;
+  box-shadow:0 .18em .3em rgba(60,110,160,.25);
+}
+.tema-clinica .opcion-letra.l0{ background:linear-gradient(160deg,#C4B1FB,#9B7EDE); }
+.tema-clinica .opcion-letra.l1{ background:linear-gradient(160deg,#86C2F5,#4E96DD); }
+.tema-clinica .opcion-letra.l2{ background:linear-gradient(160deg,#6FE0B4,#2FAE84); }
+.tema-clinica .opcion-letra.l3{ background:linear-gradient(160deg,#FFB877,#F58A3C); }
+.opcion-flecha{
+  flex:none;
+  font-size:1.5em; line-height:1;
+  color:rgba(90,140,190,.5);
+}
+
+.tema-clinica .opcion.correcta{
+  background:linear-gradient(180deg,#F1FCF8,#DDF5EC);
+  border-color:var(--verde-ok);
+  box-shadow:0 .3em 0 rgba(120,200,175,.6);
+  color:#1C7A5C;
+}
+.tema-clinica .opcion.correcta .opcion-letra{
+  background:linear-gradient(160deg,#6FE0B4,#2FAE84) !important;
+}
+.tema-clinica .opcion.incorrecta{
+  background:linear-gradient(180deg,#FEF3F1,#FADFD8);
+  border-color:#E58A72;
+  box-shadow:0 .3em 0 rgba(230,160,140,.6);
+  color:#A94E36;
+}
+.tema-clinica .opcion.incorrecta .opcion-letra{
+  background:linear-gradient(160deg,#F7A98F,#E0714F) !important;
+}
+
+/* --- explicacion y boton --- */
+.tema-clinica .explicacion{ border-top:1px solid rgba(120,175,225,.3); }
+.tema-clinica .explicacion-titulo{ color:var(--az-fuerte); }
+.tema-clinica .explicacion-texto{ color:#5D7F9E; }
+.tema-clinica .btn-primario{
+  background:linear-gradient(160deg, #6FB3EC, var(--az-fuerte));
+  box-shadow:0 .3em 0 rgba(60,110,175,.45), 0 .6em 1.2em rgba(60,110,175,.25);
+}
+
+/* --- la app entera se tiñe de azul mientras se juega a la trivia --- */
+body.clinica #app{
+  background:
+    radial-gradient(120% 55% at 50% 0%,   #FFFFFF 0%, transparent 60%),
+    radial-gradient(130% 60% at 50% 100%, #D4E9F8 0%, transparent 65%),
+    linear-gradient(180deg, #EFF7FD 0%, #E2EFFA 100%);
+}
+body.clinica .barra{
+  background:rgba(247,252,255,.82);
+  border-bottom:1px solid rgba(120,175,225,.35);
+}
+body.clinica .barra-centro h2{ color:#23456E; }
+body.clinica .barra-centro p{ color:#6F93B8; }
+body.clinica .btn-icono{
+  color:#3B82D6;
+  background:#fff;
+  border:1px solid rgba(120,175,225,.45);
+}
+body.clinica .btn-icono:active{ background:#E6F2FC; }
+body.clinica .reloj{
+  color:#2F6FBF;
+  border:1px solid rgba(120,175,225,.45);
+  box-shadow:0 .4em 1em rgba(70,120,175,.14);
+}
+body.clinica .reloj.poco{ color:#fff; border-color:#E0714F; }
+body.clinica .modal-caja{ border:1px solid rgba(120,175,225,.35); }
+
+/* la hoja, mas presente y sin cortarse */
+.deco-hojas{ left:-2.5em; top:6%; width:12em; height:19em; }
+.tema-clinica .progreso{ background:rgba(180,215,240,.5); }
+
+/* En apaisado hay poca altura: la tarjeta se compacta para que entre
+   entera con la explicacion, sin tener que desplazar nada. */
+@media (min-aspect-ratio:1/1){
+  .tema-clinica .enunciado{ font-size:1.55em; }
+  .tema-clinica .pregunta-fila{ margin-bottom:.8em; }
+  .tema-clinica .pregunta-icono{ width:2.2em; height:2.2em; }
+  .tema-clinica .opciones{ gap:.5em; }
+  .tema-clinica .opcion{ padding:.55em 1em; font-size:.98em; }
+  .tema-clinica .explicacion-texto{ font-size:.9em; }
+  .tema-clinica .opcion-letra{ width:2em; height:2em; }
+  .tema-clinica .panel{ padding:1.1em 1.2em; }
+  .tema-clinica .explicacion{ margin-top:.8em; padding-top:.7em; }
+}
+
+/* En vertical el decorado estorba menos si se queda muy tenue */
+@media (max-aspect-ratio:1/1){
+  .deco-cartel{ left:2%; top:26%; font-size:.85em; opacity:.8; }
+  .deco-hojas{ width:7em; }
+}
