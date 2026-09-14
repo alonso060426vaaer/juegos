@@ -146,6 +146,13 @@
   /* Duracion maxima de una partida, igual en todos los juegos. */
   global.LIMITE = 60;
 
+  /* Cada comprobante da derecho a UN juego y a estos intentos. */
+  global.INTENTOS = 2;
+
+  var juegoElegido = null;      // el juego que escogio este cliente
+  var intentosUsados = 0;
+  var relojSalida = null;       // vuelta automatica al final del turno
+
   var catalogo = [];            // juegos registrados
   var limpiarActual = null;     // funcion de limpieza del juego en curso
   var juegoActual = null;       // definicion del juego en curso
@@ -171,6 +178,7 @@
     dom.modalMenu = document.getElementById('modal-menu');
     dom.atractor = document.getElementById('atractor');
     dom.reloj = document.getElementById('reloj');
+    dom.intentos = document.getElementById('intentos');
     dom.relojNum = document.getElementById('reloj-num');
   }
 
@@ -189,7 +197,8 @@
   }
 
   /** Sustituye la vista actual con una transicion suave. */
-  function pintar(nuevaVista) {
+  function pintar(nuevaVista, limpieza) {
+    if (typeof limpieza === 'function') limpiarActual = limpieza;
     var anterior = dom.pantalla.firstElementChild;
     if (anterior) {
       anterior.classList.add('saliendo');
@@ -238,10 +247,13 @@
         h('hr', { class: 'filete' })
       ),
       h('div', { class: 'tarjetas' }, tarjetas),
-      h('p', { class: 'menu-pie' }, 'Elige un juego para comenzar')
+      h('p', { class: 'menu-pie' }, global.Acceso
+        ? 'Elige un juego: tienes ' + global.INTENTOS + ' intentos'
+        : 'Elige un juego para comenzar')
     );
 
     pintar(vista);
+    reprogramarReposo();          // en el menu se espera menos
   }
 
   /* ------------------------- Abrir un juego ------------------------- */
@@ -252,6 +264,12 @@
       if (catalogo[i].id === id) { juego = catalogo[i]; break; }
     }
     if (!juego) return irMenu();
+
+    /* Un comprobante, un juego: si intenta otro, se le devuelve al suyo. */
+    if (juegoElegido && juegoElegido !== juego.id) return;
+    juegoElegido = juego.id;
+    intentosUsados++;
+    pintarIntentos();
 
     desmontar();
     juegoActual = juego;
@@ -265,11 +283,38 @@
     pintar(vista);
 
     limpiarActual = juego.iniciar(vista, crearApi(juego)) || null;
+    reprogramarReposo();          // dentro de un juego se espera mas
   }
 
   function reiniciar() {
     if (juegoActual) abrir(juegoActual.id);
     else irMenu();
+  }
+
+  /** Marca cuantos intentos le quedan al cliente en la barra de arriba. */
+  function pintarIntentos() {
+    if (!dom.intentos) return;
+    if (!juegoElegido || !global.Acceso) { dom.intentos.hidden = true; return; }
+    dom.intentos.hidden = false;
+    dom.intentos.textContent = 'Intento ' + Math.min(intentosUsados, global.INTENTOS) +
+                               ' de ' + global.INTENTOS;
+    dom.intentos.classList.toggle('ultimo', intentosUsados >= global.INTENTOS);
+  }
+
+  /** Se acabo el turno de este cliente: vuelta al numero de comprobante. */
+  function salir() {
+    clearTimeout(relojSalida);
+    if (!global.Acceso) { irMenu(); return; }
+    desmontar();
+    juegoActual = null;
+    juegoElegido = null;
+    intentosUsados = 0;
+    marcarEnlace(null);
+    dom.barra.hidden = true;
+    pintarIntentos();
+    global.Acceso.olvidar();
+    global.Acceso.pedir(irMenu);
+    reprogramarReposo();
   }
 
   /** API que recibe cada juego. */
@@ -445,7 +490,20 @@
       dom.modalPremio.hidden = true;
     }
 
-    dom.modalRepetir.textContent = op.textoRepetir || 'Jugar otra vez';
+    /* Intentos: si ya gasto los dos, solo puede salir (y se sale solo) */
+    var quedan = global.Acceso ? (global.INTENTOS - intentosUsados) : 1;
+    dom.modalRepetir.hidden = quedan <= 0;
+    dom.modalRepetir.textContent = op.textoRepetir ||
+      (quedan === 1 ? 'Jugar mi último intento' : 'Jugar otra vez');
+    dom.modalMenu.textContent = global.Acceso ? 'Salir' : 'Ver otros juegos';
+
+    clearTimeout(relojSalida);
+    if (quedan <= 0) {
+      dom.modalMensaje.textContent = (op.mensaje ? op.mensaje + ' ' : '') +
+        'Se acabaron tus ' + global.INTENTOS + ' intentos.';
+      relojSalida = setTimeout(salir, 14000);
+    }
+
     dom.modal.hidden = false;
   }
 
@@ -477,7 +535,7 @@
     if (!dom.atractor.hidden) return;          // ya esta en reposo
     var espera = juegoActual ? ESPERA_JUEGO : ESPERA_MENU;
     relojReposo = setTimeout(function () {
-      if (juegoActual) { irMenu(); reprogramarReposo(); }
+      if (juegoActual) { salir(); }
       else { dom.atractor.hidden = false; }
     }, espera);
   }
@@ -485,7 +543,16 @@
   function despertar() {
     if (dom.atractor.hidden) return;
     dom.atractor.hidden = true;
-    irMenu();
+    /* Quien llega ahora es otra persona: se le pide su comprobante. */
+    if (global.Acceso) {
+      desmontar();
+      juegoActual = null;
+      dom.barra.hidden = true;
+      global.Acceso.olvidar();
+      global.Acceso.pedir(irMenu);
+    } else {
+      irMenu();
+    }
     reprogramarReposo();
   }
 
@@ -497,10 +564,10 @@
     cache();
     pintarSonido();
 
-    dom.volver.addEventListener('click', function () { sonar('toque'); irMenu(); });
+    dom.volver.addEventListener('click', function () { sonar('toque'); salir(); });
     dom.sonido.addEventListener('click', alternarSonido);
     dom.modalRepetir.addEventListener('click', function () { sonar('toque'); reiniciar(); });
-    dom.modalMenu.addEventListener('click', function () { sonar('toque'); irMenu(); });
+    dom.modalMenu.addEventListener('click', function () { sonar('toque'); salir(); });
     dom.atractor.addEventListener('pointerdown', despertar);
 
     // Cualquier interaccion reinicia el contador de reposo
@@ -538,13 +605,26 @@
 
     // Permite abrir un juego directamente: index.html#trivia
     var atajo = (location.hash || '').replace('#', '');
-    if (atajo) abrir(atajo); else irMenu();
-    reprogramarReposo();
+    function arrancar() {
+      if (atajo) abrir(atajo); else irMenu();
+      atajo = '';                       // solo la primera vez
+      reprogramarReposo();
+    }
+
+    /* Antes de jugar hay que pasar por el numero de boleta. */
+    if (global.Acceso && !global.Acceso.autorizado()) {
+      dom.barra.hidden = true;
+      global.Acceso.pedir(arrancar);
+      reprogramarReposo();
+    } else {
+      arrancar();
+    }
   }
 
   global.App = {
     registrar: registrar,
     iniciar: iniciar,
+    pintar: pintar,
     menu: irMenu,
     abrir: abrir,
     sonar: sonar,

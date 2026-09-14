@@ -27,6 +27,30 @@ Al primer toque la página pide pantalla completa automáticamente.
 | Patos al Vuelo | Puntería y atención (arcade clásico, en la playa) | `index.html#patos` |
 | Salto Infinito | Coordinación: sube saltando entre bloques (hay bloques fantasma) | `index.html#saltos` |
 
+## Entrada con número de boleta
+
+Antes de jugar, la pantalla pide el **número de la boleta o factura**. No hay
+usuarios ni contraseñas: se comprueba que el número **esté bien escrito** y ya
+se entra. Como el tótem no tiene teclado, sale un **teclado en pantalla** con
+las letras B y F, el guion y los dígitos.
+
+Formatos que acepta (`assets/js/acceso.js`):
+
+| Tipo | Ejemplo | Regla |
+|---|---|---|
+| Boleta electrónica | `B001-00001234` | `B` + 3 caracteres de serie + hasta 8 dígitos |
+| Factura electrónica | `F001-00001234` | `F` + 3 caracteres de serie + hasta 8 dígitos |
+| Comprobante impreso | `001-0001234` | serie de 3 o 4 dígitos, guion y el correlativo |
+
+Se puede escribir en minúsculas y sin guion. Rechaza lo que no tenga forma de
+comprobante, lo que le falten o sobren dígitos y los correlativos a cero.
+
+**Ojo**: esto valida el **formato**, no comprueba que la boleta exista de verdad.
+Para eso haría falta un servidor que consulte SUNAT o la caja.
+
+Cuando salta el protector de pantalla (un minuto sin tocar), se vuelve a pedir el
+número: quien llega después es otra persona.
+
 ## Premios al cumplir el objetivo
 
 Cuando alguien cumple el objetivo de un juego salta la **celebración**: confeti,

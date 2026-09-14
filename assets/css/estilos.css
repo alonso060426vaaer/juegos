@@ -127,6 +127,26 @@ button{ font:inherit; color:inherit; }
 .btn-icono:active{ transform:scale(.9); background:var(--crema-2); }
 .btn-icono.apagado{ opacity:.4; }
 
+/* Intentos que le quedan al cliente en su turno */
+.intentos{
+  flex:none;
+  padding:.4em .9em;
+  font-size:.72em;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:var(--oro-osc);
+  background:var(--blanco);
+  border:var(--linea);
+  border-radius:999px;
+  box-shadow:var(--sombra);
+  white-space:nowrap;
+}
+.intentos.ultimo{
+  color:#fff;
+  background:linear-gradient(160deg, var(--oro-claro), var(--oro));
+  border-color:var(--oro);
+}
+
 /* Cuenta atras de la partida */
 .reloj{
   flex:none;
@@ -551,4 +571,137 @@ button{ font:inherit; color:inherit; }
   .centro-palabra .huecos{ grid-column:2; grid-row:1; align-self:end; margin:0 0 1.2em; }
   .centro-palabra .letras{ grid-column:2; grid-row:2; align-self:start; }
   .centro-palabra .aviso{ grid-column:1 / -1; grid-row:3; margin-top:1em; }
+}
+
+/* ====================== ACCESO (numero de boleta) ====================== */
+
+.acceso{ justify-content:center; padding:1.2em 1.3em; }
+
+.acceso-caja{
+  width:min(100%, 26em);
+  margin:0 auto;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:.55em;
+  padding:1.8em 1.6em 1.4em;
+  text-align:center;
+  background:rgba(255,255,255,.9);
+  border:var(--linea);
+  border-radius:var(--r-grande);
+  box-shadow:var(--sombra-alta);
+  animation:entrar .4s both;
+}
+
+.acceso-logo{ max-height:9vh; width:auto; margin-bottom:.2em; }
+
+.acceso-titulo{
+  margin:0;
+  font-family:var(--serif);
+  font-size:2em; font-weight:600;
+  letter-spacing:.01em;
+}
+.acceso-lema{
+  margin:0 0 .4em;
+  font-size:.95em;
+  line-height:1.4;
+  color:var(--tinta-2);
+}
+
+/* --- lo que se va escribiendo --- */
+.acceso-campo{
+  width:100%;
+  white-space:nowrap;
+  display:flex; align-items:center; justify-content:center; gap:.1em;
+  padding:.55em .6em;
+  font-family:var(--serif);
+  font-size:1.9em; font-weight:600;
+  letter-spacing:.06em;
+  font-variant-numeric:tabular-nums;
+  color:var(--tinta);
+  background:var(--crema);
+  border:1px solid rgba(185,146,79,.45);
+  border-bottom:.16em solid var(--oro-claro);
+  border-radius:var(--r-medio);
+  box-shadow:inset 0 .18em .4em rgba(120,95,55,.14);
+}
+.acceso-campo.vacio .acceso-valor{ color:rgba(123,110,96,.38); }
+.acceso-cursor{
+  width:.09em; height:1em;
+  background:var(--oro);
+  animation:latir 1s steps(1) infinite;
+}
+
+.acceso-aviso{
+  margin:.1em 0 .3em;
+  min-height:2.6em;
+  font-size:.86em;
+  line-height:1.35;
+  color:var(--tinta-2);
+}
+.acceso-aviso.mal{ color:var(--rojo); font-weight:600; }
+.acceso-aviso.bien{ color:var(--verde); font-weight:600; }
+
+/* --- teclado en pantalla --- */
+.acceso-teclado{
+  width:100%;
+  display:grid;
+  grid-template-columns:repeat(3, 1fr);
+  gap:.5em;
+  margin-bottom:.3em;
+}
+.acceso-tecla{
+  padding:.55em 0;
+  font-family:var(--serif);
+  font-size:1.6em; font-weight:600;
+  color:var(--tinta);
+  background:linear-gradient(180deg, #FFFDF8 0%, #FBF3E4 55%, #EFE0C8 100%);
+  border:1px solid rgba(185,146,79,.45);
+  border-radius:.55em;
+  box-shadow:0 .2em 0 #CBB085, 0 .3em .5em rgba(90,70,40,.22),
+             inset 0 .07em 0 rgba(255,255,255,.9);
+  cursor:pointer;
+  transition:transform .1s, box-shadow .1s;
+}
+.acceso-tecla:active{
+  transform:translateY(.18em);
+  box-shadow:0 .04em 0 #CBB085, 0 .08em .2em rgba(90,70,40,.2);
+}
+.acceso-tecla.letra{ color:var(--oro-osc); }
+.acceso-tecla.borrar{ color:var(--rojo); font-size:1.3em; }
+
+.acceso-entrar{ width:100%; font-size:1.05em; }
+
+.acceso-nota{
+  margin:.5em 0 0;
+  font-size:.72em;
+  letter-spacing:.08em;
+  color:var(--tinta-2);
+  opacity:.75;
+}
+
+/* En apaisado hay poca altura: la caja se reparte en dos columnas */
+@media (min-aspect-ratio:1/1){
+  .acceso-caja{
+    width:min(100%, 44em);
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    align-items:center;
+    column-gap:2em;
+    row-gap:.4em;
+    text-align:left;
+    padding:1.4em 1.8em;
+  }
+  .acceso-logo{ grid-column:1; justify-self:center; max-height:11vh; }
+  .acceso-titulo,
+  .acceso-lema,
+  .acceso-campo,
+  .acceso-aviso,
+  .acceso-nota{ grid-column:1; }
+  .acceso-titulo{ text-align:center; }
+  .acceso-lema{ text-align:center; }
+  .acceso-nota{ text-align:center; }
+  .acceso-teclado{ grid-column:2; grid-row:1 / span 5; margin:0; }
+  .acceso-entrar{ grid-column:2; }
+  .acceso-campo{ font-size:1.5em; white-space:nowrap; }
 }
