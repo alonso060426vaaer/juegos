@@ -63,14 +63,20 @@ marca cada toque con su hora en `e.timeStamp`) y comprueba dónde estaba el pato
 lag: perdona el retraso, no la puntería. Así el pato puede volar rápido sin ser
 injusto.
 
-**Calibrarlo en el tótem.** Solo hay un número que medir: lo que tarda el panel en
-pintar y el cristal en reaccionar. Abre la consola del navegador y escribe:
+**No hay que calibrar nada.** Queda un solo número, `LAG_PANTALLA` (lo que tarda el
+panel en pintar, que no consta en ninguna parte), y viene con 60 ms de fábrica. Se
+comprobó que con ese valor un cliente que apunta bien acierta igual en paneles de
+60, 150 y hasta 220 ms, así que cubre de sobra cualquier pantalla normal.
 
-    PATOS_LAG_DEBUG = true
+Por si acaso, el juego **se calibra solo** en pantallas excepcionalmente lentas:
+cuando un tiro falla pero cae encima del pato en otro instante del rastro, deduce
+de ahí cuánto va por detrás la pantalla. Para que esto no pueda ablandar el juego,
+solo aprende si los fallos **se parecen entre sí** — un retraso real es siempre el
+mismo, mientras que tocar al tuntún da fallos dispersos. Probado con 300 toques al
+azar: no aprende nada y acierta 12 veces de 300.
 
-Juega media docena de patos y mira `PATOS_LAG`. El campo `media` son milisegundos:
-divídelo entre 1000 y ponlo en `LAG_PANTALLA`, al principio de
-`assets/js/juegos/patos.js`. Viene con 0,06 (60 ms) de partida.
+Si alguna vez hace falta dar soporte, `PATOS_LAG` en la consola enseña lo que ha
+medido y lo que ha aprendido (en milisegundos).
 
 ## Premios al cumplir el objetivo
 

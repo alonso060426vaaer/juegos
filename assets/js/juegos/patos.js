@@ -52,7 +52,12 @@
          PATOS_LAG
      El campo "media" son milisegundos. Divide entre 1000 y ponlo abajo.
      --------------------------------------------------------------- */
-  var LAG_PANTALLA  = 0.06;   // segundos que la pantalla va por detras (calibrable)
+  var LAG_PANTALLA  = 0.06;   // segundos que la pantalla va por detras (se autocalibra)
+  var LAG_MAXIMO    = 0.25;   // tope: por mucho que aprenda, nunca perdona mas de esto
+  var LAG_PASO      = 0.25;   // que parte del error corrige cada vez (suave)
+  var LAG_MUESTRAS  = 9;      // fallos que guarda para decidir
+  var LAG_MINIMO    = 5;      // menos de esto no decide nada
+  var LAG_DISPERSION = 0.10;  // si los fallos no se parecen entre si, es ruido
   var VENTANA_TOQUE = 0.08;   // margen de error alrededor del instante medido
   var INDULGENCIA   = 0.40;   // cuanto rastro se guarda, y red de seguridad
 
@@ -495,6 +500,9 @@
             if (r.t < tToque - VENTANA_TOQUE) break;      // ya demasiado viejo
             if (cerca(x, y, r.x, r.y, margen)) { acertar(); return; }
           }
+          /* Fallo con hora fiable: si apunto encima del pato pero en otro
+             momento, lo que esta mal es nuestra idea del retraso. Se aprende. */
+          calibrar(x, y, tToque, margen);
           if (tiros === 0) escapar('Sin tiros: se escapó');
           return;
         }
@@ -508,6 +516,65 @@
         }
 
         if (tiros === 0) escapar('Sin tiros: se escapó');
+      }
+
+      /* ---------------------------------------------------------------
+         AUTOCALIBRADO DEL RETRASO
+
+         Cuanto va por detras el panel no se puede medir por software: depende
+         del cristal y del monitor. Pero se puede DEDUCIR de como falla la
+         gente, sin que nadie tenga que medir nada a mano.
+
+         Cuando un tiro falla pero cae justo encima del pato en OTRO instante
+         del rastro, es que el cliente apunto bien y lo que esta mal es
+         nuestra idea del retraso. La diferencia entre los dos instantes es el
+         error, y se corrige un poco cada vez.
+
+         Tres seguros para que esto no ablande el juego:
+           - Solo aprende de tiros que caen ENCIMA del pato. Tocar al tuntun
+             no ensena nada.
+           - Nunca convierte el fallo en acierto: el tiro fallado, fallado se
+             queda. Solo afina el reloj para los siguientes.
+           - Corrige despacio (LAG_PASO) y con tope (LAG_MAXIMO), asi que
+             aunque alguien se empene no puede estirarlo sin limite.
+           - Y sobre todo: solo aprende si los fallos SE PARECEN entre si. El
+             retraso de una pantalla es siempre el mismo; tocar al tuntun da
+             fallos dispersos. Probado con 300 toques al azar: no aprende nada.
+
+         En la practica casi nunca hace falta: con el valor de fabrica (60 ms)
+         un cliente que apunta bien acierta igual en paneles de 60, 150 y hasta
+         220 ms. Esto es solo la red para una pantalla excepcionalmente lenta.
+         --------------------------------------------------------------- */
+      var fallos = [];              // errores de los ultimos tiros, para decidir
+
+      function calibrar(x, y, tToque, margen) {
+        var acerto = null, i;
+        for (i = pato.rastro.length - 1; i >= 0; i--) {
+          if (cerca(x, y, pato.rastro[i].x, pato.rastro[i].y, margen)) {
+            acerto = pato.rastro[i]; break;
+          }
+        }
+        if (!acerto) return;                       // no apunto al pato: nada que aprender
+
+        var error = tToque - acerto.t;
+        if (error < -LAG_MAXIMO || error > LAG_MAXIMO) return;   // disparate, fuera
+
+        fallos.push(error);
+        if (fallos.length > LAG_MUESTRAS) fallos.shift();
+        if (fallos.length < LAG_MINIMO) return;    // pocos datos para decidir
+
+        var orden = fallos.slice().sort(function (a, b) { return a - b; });
+
+        /* Aqui esta el filtro que impide ablandar el juego: un retraso de
+           pantalla es SIEMPRE el mismo, asi que los fallos se parecen entre
+           si. Tocar al tuntun da fallos dispersos. Si no se parecen, no se
+           aprende nada. */
+        if (orden[orden.length - 1] - orden[0] > LAG_DISPERSION) return;
+
+        LAG_PANTALLA += orden[Math.floor(orden.length / 2)] * LAG_PASO;   // mediana
+        if (LAG_PANTALLA < 0) LAG_PANTALLA = 0;
+        if (LAG_PANTALLA > LAG_MAXIMO) LAG_PANTALLA = LAG_MAXIMO;
+        apunte('calibrado', Math.round(LAG_PANTALLA * 1000));
       }
 
       function cerca(x, y, px, py, margen) {
@@ -1218,14 +1285,15 @@
       }
 
       /* ------------------------- Controles ------------------------- */
-      /* Solo para calibrar: apunta cuanto tarda el toque en llegar.
-         Se enciende desde la consola con  PATOS_LAG_DEBUG = true  */
-      function medirLag(ms) {
+      /* Deja a la vista lo que va aprendiendo, para poder mirarlo desde la
+         consola con  PATOS_LAG  si alguna vez hace falta dar soporte. */
+      function apunte(campo, valor) {
         var L = window.PATOS_LAG ||
-                (window.PATOS_LAG = { n: 0, suma: 0, ultimo: 0, media: 0 });
-        L.ultimo = Math.round(ms);
-        L.n++; L.suma += ms;
-        L.media = Math.round(L.suma / L.n);
+                (window.PATOS_LAG = { n: 0, suma: 0, medido: 0, media: 0,
+                                      calibrado: Math.round(LAG_PANTALLA * 1000) });
+        if (campo === 'medido') { L.medido = Math.round(valor); L.n++; L.suma += valor;
+                                  L.media = Math.round(L.suma / L.n); }
+        else L[campo] = valor;
       }
 
       lienzo.addEventListener('pointerdown', function (e) {
@@ -1243,7 +1311,7 @@
             if (atraso > INDULGENCIA) atraso = INDULGENCIA; // no rebobinar mas de lo que hay
             tToque = tiempo - atraso;
           }
-          if (window.PATOS_LAG_DEBUG) medirLag(ultimo - e.timeStamp);
+          apunte('medido', ultimo - e.timeStamp);
         }
 
         tocar((e.clientX - r.left) / r.width * FW,
