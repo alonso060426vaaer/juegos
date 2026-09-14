@@ -121,6 +121,47 @@
       ));
       vista.appendChild(h('div', { class: 'centro' }, zona, aviso));
 
+      /* ---------------------------------------------------------------
+         MODO DIAGNOSTICO
+
+         Se enciende anadiendo  ?diag=1  al final de la direccion. Saca un
+         recuadro con lo que pasa de verdad en ESTA pantalla, para poder ver
+         por que no registra los toques en vez de adivinarlo. Si no se pide,
+         no existe y no cuesta nada.
+         --------------------------------------------------------------- */
+      var DIAG = /[?&]diag=1/.test(location.search);
+      var panelDiag = null, toques = 0;
+      var SALTO = String.fromCharCode(10);
+      if (DIAG) {
+        panelDiag = h('pre', {
+          estilo: 'position:fixed; left:.5em; top:.5em; z-index:99; margin:0;' +
+                  ' padding:.5em .7em; border-radius:.4em; pointer-events:none;' +
+                  ' background:rgba(0,0,0,.82); color:#8F8;' +
+                  ' font:12px/1.45 ui-monospace,Consolas,monospace; white-space:pre;'
+        }, 'toca la pantalla...');
+        vista.appendChild(panelDiag);
+      }
+
+      function diagnosticar(x, y, tToque, acerto) {
+        if (!panelDiag) return;
+        toques++;
+        var d = pato ? Math.round(Math.sqrt((x - pato.x) * (x - pato.x) +
+                                            (y - pato.y) * (y - pato.y))) : -1;
+        panelDiag.textContent = [
+          'toques recibidos : ' + toques,
+          'dibujos/segundo  : ' + Math.round(1000 / Math.max(1, fotograma)),
+          'retraso del toque: ' + (tToque === null ? 'SIN HORA'
+                                   : Math.round(ultimo - tToque) + ' ms'),
+          'retraso aprendido: ' + Math.round(LAG_PANTALLA * 1000) + ' ms',
+          'fase del juego   : ' + fase,
+          'tiros que quedan : ' + tiros + ' de ' + TIROS,
+          'toque en         : ' + Math.round(x) + ',' + Math.round(y),
+          'pato en          : ' + (pato ? Math.round(pato.x) + ',' + Math.round(pato.y) : '-'),
+          'distancia        : ' + d + '   (perdona hasta ' + Math.round(RADIO_TIRO * zoom) + ')',
+          'resultado        : ' + (acerto ? 'ACIERTO' : 'fallo')
+        ].join(SALTO);
+      }
+
       api.sub('Ronda 1' + (mejor ? '  ·  Récord ' + mejor : ''));
 
       var ctx = lienzo.getContext ? lienzo.getContext('2d') : null;
@@ -477,7 +518,15 @@
          seguridad del final. */
       function tocar(x, y, tToque) {
         if (terminado) return;
-        if (fase !== 'volando' || !pato || tiros <= 0) return;
+
+        /* Sin tiros, o entre un pato y el siguiente. Antes esto no hacia
+           NADA: ni sonido ni marca. El cliente cree que la pantalla no
+           responde y aporrea. Ahora al menos se oye que no quedan tiros. */
+        if (fase !== 'volando' || !pato || tiros <= 0) {
+          App.tono(110, 0.05, 0.07, 'square');
+          diagnosticar(x, y, tToque, false);
+          return;
+        }
 
         tiros--;
         disparos.push({ x: x, y: y, t: 0 });
@@ -485,37 +534,59 @@
         pintarHud();
 
         var margen = RADIO_TIRO * zoom;
-        var i, r;
 
-        /* 1. Donde esta ahora mismo: pantalla rapida, o buena punteria. */
-        if (cerca(x, y, pato.x, pato.y, margen)) { acertar(); return; }
+        /* 1. Donde esta ahora mismo. */
+        var dio = cerca(x, y, pato.x, pato.y, margen);
 
-        /* 2. Donde estaba cuando el dedo toco. Esto es la compensacion: se
-           mira solo esa franja del rastro, no el rastro entero, para no
-           regalar aciertos de sitios donde el pato estuvo hace mucho. */
-        if (tToque !== null && tToque !== undefined) {
-          for (i = pato.rastro.length - 1; i >= 0; i--) {
-            r = pato.rastro[i];
-            if (r.t > tToque + VENTANA_TOQUE) continue;   // aun demasiado nuevo
-            if (r.t < tToque - VENTANA_TOQUE) break;      // ya demasiado viejo
-            if (cerca(x, y, r.x, r.y, margen)) { acertar(); return; }
+        if (!dio) {
+          if (tToque !== null && tToque !== undefined) {
+            /* 2. Por donde paso el pato alrededor del instante del toque. Se
+               mira el TRAZO entre un dibujo y el siguiente, no los puntos
+               sueltos: en una pantalla lenta el pato salta y entre dos puntos
+               queda un hueco por el que se cuelan los aciertos buenos. La
+               ventana crece con el tiempo de fotograma, que es la
+               incertidumbre minima: no se puede saber donde estaba el pato
+               con mas precision que un dibujo. */
+            dio = enElTrazo(x, y, margen, tToque, VENTANA_TOQUE * 1000 + fotograma);
+            if (!dio) calibrar(x, y, tToque, margen);
+          } else {
+            /* 3. Red de seguridad si no hay hora fiable del toque. */
+            dio = enElTrazo(x, y, margen, ultimo, INDULGENCIA * 1000);
           }
-          /* Fallo con hora fiable: si apunto encima del pato pero en otro
-             momento, lo que esta mal es nuestra idea del retraso. Se aprende. */
-          calibrar(x, y, tToque, margen);
-          if (tiros === 0) escapar('Sin tiros: se escapó');
-          return;
         }
 
-        /* 3. Red de seguridad: sin hora del toque se perdona a lo bruto,
-           como antes. Es peor, pero mejor que no acertar nunca. */
-        for (i = pato.rastro.length - 1; i >= 0; i--) {
-          r = pato.rastro[i];
-          if (tiempo - r.t > INDULGENCIA) break;
-          if (cerca(x, y, r.x, r.y, margen)) { acertar(); return; }
-        }
+        diagnosticar(x, y, tToque, dio);
 
+        if (dio) { acertar(); return; }
         if (tiros === 0) escapar('Sin tiros: se escapó');
+      }
+
+      /* Recorre el rastro al reves y mira si el toque cae sobre el CAMINO que
+         siguio el pato dentro de la franja de tiempo pedida. Con devolverHora
+         devuelve el instante del tramo acertado (lo usa el autocalibrado). */
+      function enElTrazo(x, y, margen, centro, ventana, devolverHora) {
+        var puntos = pato.rastro;
+        var b = { x: pato.x, y: pato.y, tr: ultimo };      // posicion de ahora
+        for (var i = puntos.length - 1; i >= 0; i--) {
+          var a = puntos[i];
+          if (a.tr > centro + ventana) { b = a; continue; }
+          if (b.tr < centro - ventana) break;
+          if (cercaTramo(x, y, a, b, margen)) {
+            return devolverHora ? (a.tr + b.tr) / 2 : true;
+          }
+          b = a;
+        }
+        return devolverHora ? null : false;
+      }
+
+      /* Distancia del toque al segmento a-b, para que el margen cubra todo el
+         recorrido y no solo los puntos donde toco dibujar. */
+      function cercaTramo(x, y, a, b, margen) {
+        var dx = b.x - a.x, dy = b.y - a.y;
+        var largo = dx * dx + dy * dy;
+        var u = largo ? ((x - a.x) * dx + (y - a.y) * dy) / largo : 0;
+        if (u < 0) u = 0; else if (u > 1) u = 1;
+        return cerca(x, y, a.x + dx * u, a.y + dy * u, margen);
       }
 
       /* ---------------------------------------------------------------
@@ -548,16 +619,11 @@
       var fallos = [];              // errores de los ultimos tiros, para decidir
 
       function calibrar(x, y, tToque, margen) {
-        var acerto = null, i;
-        for (i = pato.rastro.length - 1; i >= 0; i--) {
-          if (cerca(x, y, pato.rastro[i].x, pato.rastro[i].y, margen)) {
-            acerto = pato.rastro[i]; break;
-          }
-        }
-        if (!acerto) return;                       // no apunto al pato: nada que aprender
+        var hora = enElTrazo(x, y, margen, ultimo, INDULGENCIA * 1000, true);
+        if (hora === null) return;                 // no apunto al pato
 
-        var error = tToque - acerto.t;
-        if (error < -LAG_MAXIMO || error > LAG_MAXIMO) return;   // disparate, fuera
+        var error = tToque - hora;                 // ms; + : ibamos tarde
+        if (error < -LAG_MAXIMO * 1000 || error > LAG_MAXIMO * 1000) return;
 
         fallos.push(error);
         if (fallos.length > LAG_MUESTRAS) fallos.shift();
@@ -569,9 +635,9 @@
            pantalla es SIEMPRE el mismo, asi que los fallos se parecen entre
            si. Tocar al tuntun da fallos dispersos. Si no se parecen, no se
            aprende nada. */
-        if (orden[orden.length - 1] - orden[0] > LAG_DISPERSION) return;
+        if (orden[orden.length - 1] - orden[0] > LAG_DISPERSION * 1000) return;
 
-        LAG_PANTALLA += orden[Math.floor(orden.length / 2)] * LAG_PASO;   // mediana
+        LAG_PANTALLA += (orden[Math.floor(orden.length / 2)] / 1000) * LAG_PASO;
         if (LAG_PANTALLA < 0) LAG_PANTALLA = 0;
         if (LAG_PANTALLA > LAG_MAXIMO) LAG_PANTALLA = LAG_MAXIMO;
         apunte('calibrado', Math.round(LAG_PANTALLA * 1000));
@@ -744,8 +810,14 @@
           p.x += p.vx * dt;
           p.y += p.vy * dt;
 
-          p.rastro.push({ x: p.x, y: p.y, t: tiempo });
-          while (p.rastro.length && tiempo - p.rastro[0].t > INDULGENCIA) p.rastro.shift();
+          /* Se guarda la hora REAL (tr, en ms), no la del juego: con una
+             pantalla lenta el reloj del juego se queda corto (ver el tope de
+             dt en bucle) y compararlo con la hora del dedo daria un instante
+             equivocado. Es la misma escala que e.timeStamp. */
+          p.rastro.push({ x: p.x, y: p.y, tr: ultimo });
+          while (p.rastro.length && ultimo - p.rastro[0].tr > INDULGENCIA * 1000) {
+            p.rastro.shift();
+          }
 
           if (p.x < 7)      { p.x = 7;      p.dir =  1; p.vx =  Math.abs(p.vx); }
           if (p.x > FW - 7) { p.x = FW - 7; p.dir = -1; p.vx = -Math.abs(p.vx); }
@@ -1300,19 +1372,19 @@
         var r = lienzo.getBoundingClientRect();
         if (!r.width) return;
 
-        /* e.timeStamp y el reloj de los fotogramas (ultimo) van en la misma
-           escala, asi que restarlos da el retraso real de esta pantalla. */
+        /* Hora REAL en que el dedo toco, menos lo que la pantalla va por
+           detras. Todo en ms de performance.now: la misma escala que usa
+           e.timeStamp y la que se guarda en el rastro (tr). */
         var tToque = null;
         if (ultimo && e.timeStamp > 0) {
-          var atraso = (ultimo - e.timeStamp) / 1000 + LAG_PANTALLA;
+          var atraso = ultimo - e.timeStamp;               // ms
           /* Si sale disparatado, el navegador usa otro reloj: no fiarse. */
-          if (atraso > -1 && atraso < 1) {
-            if (atraso < 0) atraso = 0;                    // toque mas nuevo que el ultimo cuadro
-            if (atraso > INDULGENCIA) atraso = INDULGENCIA; // no rebobinar mas de lo que hay
-            tToque = tiempo - atraso;
+          if (atraso > -1000 && atraso < 1000) {
+            tToque = e.timeStamp - LAG_PANTALLA * 1000;
+            apunte('medido', atraso);
           }
-          apunte('medido', ultimo - e.timeStamp);
         }
+        apunte('fps', Math.round(1000 / Math.max(1, fotograma)));
 
         tocar((e.clientX - r.left) / r.width * FW,
               (e.clientY - r.top) / r.height * FH,
@@ -1327,11 +1399,14 @@
       }
 
       /* ------------------------- Bucle ------------------------- */
-      var cuadro = 0, ultimo = 0;
+      var cuadro = 0, ultimo = 0, fotograma = 16.7;   // ms por dibujo (se mide solo)
 
       function bucle(t) {
         cuadro = requestAnimationFrame(bucle);
         var dt = ultimo ? Math.max(0, Math.min(0.05, (t - ultimo) / 1000)) : 0;
+        /* Cuanto tarda un dibujo. En una pantalla lenta el pato da saltos
+           grandes entre uno y otro, y el margen tiene que crecer con ellos. */
+        if (ultimo) fotograma = fotograma * 0.9 + (t - ultimo) * 0.1;
         ultimo = t;
         paso(dt);
         dibujar();
