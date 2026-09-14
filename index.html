@@ -4,15 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#F7F1E8">
-<!-- La pagina nunca se guarda en cache: asi cualquier cambio en los
-     juegos llega a la pantalla sin tener que hacer Ctrl+F5. -->
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
 <title>Zona de Juegos | Joana Bernedo Body Aesthetics</title>
 <link rel="icon" href="assets/img/logo.png">
-<link rel="stylesheet" href="assets/css/estilos.css?v=36">
-<link rel="stylesheet" href="assets/css/juegos.css?v=36">
+<link rel="stylesheet" href="assets/css/estilos.css">
+<link rel="stylesheet" href="assets/css/juegos.css">
 </head>
 <body>
 
@@ -26,9 +21,6 @@
     <div class="barra-centro">
       <h2 id="barra-titulo">Juego</h2>
       <p id="barra-sub"></p>
-    </div>
-    <div class="reloj" id="reloj" hidden aria-live="off">
-      <span aria-hidden="true">⏱</span><span id="reloj-num">1:30</span>
     </div>
     <button class="btn-icono" id="btn-sonido" aria-label="Activar o desactivar sonido">
       <span aria-hidden="true" id="icono-sonido">♪</span>
@@ -46,7 +38,6 @@
     <div class="modal-sello" id="modal-sello">✦</div>
     <h2 id="modal-titulo">¡Muy bien!</h2>
     <p id="modal-mensaje"></p>
-    <div id="modal-premio" class="premio" hidden></div>
     <div id="modal-datos" class="modal-datos"></div>
     <div class="modal-botones">
       <button class="btn btn-primario" id="modal-repetir">Jugar otra vez</button>
@@ -63,18 +54,16 @@
 </div>
 
 <!-- Núcleo: utilidades, navegación, sonido, inactividad -->
-<script src="assets/js/nucleo.js?v=36"></script>
-<script src="assets/js/premios.js?v=36"></script>
+<script src="assets/js/nucleo.js"></script>
 <!-- Juegos (cada uno se registra solo en el menú) -->
-<script src="assets/js/juegos/memoria.js?v=36"></script>
-<script src="assets/js/juegos/trivia.js?v=36"></script>
-<script src="assets/js/juegos/mitos.js?v=36"></script>
-<script src="assets/js/juegos/palabra.js?v=36"></script>
-<script src="assets/js/juegos/ladrillos.js?v=36"></script>
-<script src="assets/js/juegos/patos.js?v=36"></script>
-<script src="assets/js/juegos/saltos.js?v=36"></script>
+<script src="assets/js/juegos/memoria.js"></script>
+<script src="assets/js/juegos/trivia.js"></script>
+<script src="assets/js/juegos/mitos.js"></script>
+<script src="assets/js/juegos/sopa.js"></script>
+<script src="assets/js/juegos/simon.js"></script>
+<script src="assets/js/juegos/rutina.js"></script>
 <!-- Arranque -->
-<script src="assets/js/inicio.js?v=36"></script>
+<script src="assets/js/inicio.js"></script>
 
 </body>
 </html>
