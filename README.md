@@ -78,6 +78,32 @@ azar: no aprende nada y acierta 12 veces de 300.
 Si alguna vez hace falta dar soporte, `PATOS_LAG` en la consola enseña lo que ha
 medido y lo que ha aprendido (en milisegundos).
 
+## Instalarlo como aplicación en el tótem
+
+La forma más cómoda de que no se vea nada del navegador, sin instalar ni
+compilar nada. El sitio lleva un `manifest.webmanifest` con
+`display: fullscreen`, así que al abrirlo desde su icono arranca **ya a
+pantalla completa**, sin pestañas ni barra de direcciones.
+
+En el tótem, con la página abierta en Chrome:
+
+1. Menú **⋮** (arriba a la derecha)
+2. **Guardar y compartir** → **Instalar página como aplicación**
+   (si no sale, usa **Crear acceso directo** y marca *Abrir como ventana*)
+3. Confirmar. Queda un icono con el logo en el escritorio
+
+Abrirlo desde ese icono en adelante. Sigue siendo la misma web: **cualquier
+push a `main` llega igual**, sin volver a instalar nada.
+
+Para que arranque sola al encender el tótem, copiar ese icono a la carpeta
+que se abre al escribir `shell:startup` en el menú Inicio.
+
+**Esto no quita la barra de tareas de Windows.** Si se quiere un tótem que no
+se pueda abandonar, hay que usar además el quiosco del propio Windows:
+Configuración → Cuentas → Otros usuarios → **Configurar un quiosco**
+(acceso asignado). Se elige esa aplicación y Windows arranca directo en ella,
+sin escritorio, sin barra de tareas y sin Alt+Tab.
+
 ## Poner el tótem a prueba de dedos
 
 La página hace lo que puede: pide **pantalla completa** en cuanto el cliente
