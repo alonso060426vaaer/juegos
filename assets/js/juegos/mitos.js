@@ -64,6 +64,41 @@
   /* Dificultad alta: 10 frases en minuto y medio. */
   var TOTAL = 10;
   var OBJETIVO = 7;                   // aciertos para llevarse el premio
+  var ESPERA = 2000;                  // ms que se ve el veredicto antes de pasar solo
+
+  /* Dibujos del tema spa (SVG para que se vean nitidos en la tele). */
+  var ICO_RONDA = '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="12" fill="#35C49B"/>' +
+    '<path d="m12 5.6 1.9 3.9 4.3.6-3.1 3 .7 4.3-3.8-2-3.8 2 .7-4.3-3.1-3 4.3-.6z" fill="#fff"/></svg>';
+
+  var ICO_ACIERTOS = '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="12" fill="#3E8FE0"/>' +
+    '<circle cx="12" cy="12" r="6.4" stroke="#fff" stroke-width="2"/>' +
+    '<circle cx="12" cy="12" r="2.2" fill="#fff"/></svg>';
+
+  /* El sello de la tarjeta cambia con el tema de la frase. */
+  var ICO_SELLO = '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="12" fill="#E4F6EF"/>' +
+    '<circle cx="12" cy="12" r="4.2" stroke="#2FB98A" stroke-width="1.8"/>' +
+    '<path d="M12 3.4v2.2M12 18.4v2.2M3.4 12h2.2M18.4 12h2.2M6 6l1.5 1.5M16.5 16.5 18 18M18 6l-1.5 1.5M7.5 16.5 6 18" ' +
+    'stroke="#2FB98A" stroke-width="1.8" stroke-linecap="round"/></svg>';
+
+  var HOJA = '<svg viewBox="0 0 100 100" fill="none" aria-hidden="true">' +
+    '<path d="M6 94C6 52 30 20 82 8c6 44-16 76-76 86z" fill="#7BC9A0" opacity=".85"/>' +
+    '<path d="M8 92C24 58 46 34 80 12" stroke="#4FA87E" stroke-width="2.4" opacity=".7"/>' +
+    '<path d="M30 70c8-14 4-26-2-34M52 46c10-10 12-22 10-30M22 84c-2-14-10-22-16-26" ' +
+    'stroke="#4FA87E" stroke-width="2" opacity=".5"/></svg>';
+
+  var LOTO = '<svg viewBox="0 0 40 24" fill="none" aria-hidden="true">' +
+    '<path d="M20 3c3 4 4 8 0 13-4-5-3-9 0-13z" fill="#35C49B"/>' +
+    '<path d="M12 8c4 2 6 5 7 10-6-1-8-5-7-10zM28 8c-4 2-6 5-7 10 6-1 8-5 7-10z" fill="#5FD3B0"/>' +
+    '<path d="M5 13c5 0 9 2 12 6-6 2-11-1-12-6zM35 13c-5 0-9 2-12 6 6 2 11-1 12-6z" fill="#8FE3C8"/></svg>';
+
+  var DECORADO_SPA =
+    '<span class="spa-luz"></span>' +
+    '<span class="spa-espejo"></span>' +
+    '<span class="spa-hoja h1">' + HOJA + '</span>' +
+    '<span class="spa-hoja h2">' + HOJA + '</span>' +
+    '<span class="spa-hoja h3">' + HOJA + '</span>' +
+    '<div class="spa-cartel">Tu piel<br>también importa<span class="spa-corazon">♥</span></div>' +
+    '<span class="spa-tarro t1"></span><span class="spa-tarro t2"></span>';
 
   App.registrar({
     id: 'mitos',
@@ -96,29 +131,37 @@
       );
       var botones = h('div', { class: 'juicios' }, botonVerdad, botonMito);
 
-      var siguiente = h('button', {
-        class: 'btn btn-primario btn-ancho', hidden: true,
-        onclick: function () { api.sonar('toque'); avanzar(); }
-      }, 'Siguiente');
-
       botonVerdad.addEventListener('click', function () { responder(true); });
       botonMito.addEventListener('click', function () { responder(false); });
 
+      vista.classList.add('tema-spa');
+      document.body.classList.add('spa');          // tiñe tambien la barra de arriba
+      vista.appendChild(h('div', { class: 'spa-deco', html: DECORADO_SPA, 'aria-hidden': 'true' }));
+
       vista.appendChild(h('div', { class: 'marcador' },
-        h('div', { class: 'dato' }, valorRonda, h('span', { class: 'etq' }, 'Ronda')),
-        h('div', { class: 'dato' }, valorAciertos, h('span', { class: 'etq' }, 'Aciertos'))
+        h('div', { class: 'dato' },
+          h('span', { class: 'dato-icono', html: ICO_RONDA, 'aria-hidden': 'true' }),
+          h('span', { class: 'dato-texto' }, valorRonda, h('span', { class: 'etq' }, 'Ronda'))),
+        h('div', { class: 'dato' },
+          h('span', { class: 'dato-icono', html: ICO_ACIERTOS, 'aria-hidden': 'true' }),
+          h('span', { class: 'dato-texto' }, valorAciertos, h('span', { class: 'etq' }, 'Aciertos')))
       ));
       vista.appendChild(h('div', { class: 'progreso' }, barra));
       vista.appendChild(h('div', { class: 'centro' },
         h('div', { class: 'panel tarjeta-mito' },
-          h('span', { class: 'comilla', 'aria-hidden': 'true' }, '“'),
-          frase,
+          h('div', { class: 'mito-fila' },
+            h('span', { class: 'mito-sello', html: ICO_SELLO, 'aria-hidden': 'true' }),
+            h('div', { class: 'mito-texto' },
+              h('span', { class: 'comilla', 'aria-hidden': 'true' }, '“'),
+              frase)
+          ),
           veredicto
         ),
         botones
       ));
-      vista.appendChild(h('div', { class: 'pie-accion' }, siguiente));
-
+      vista.appendChild(h('p', { class: 'spa-pie' },
+        h('span', { class: 'spa-loto', html: LOTO, 'aria-hidden': 'true' }),
+        h('span', {}, 'Ciencia · Belleza · Bienestar')));
       pintar();
 
       function pintar() {
@@ -130,7 +173,6 @@
 
         frase.textContent = actual.t;
         veredicto.hidden = true;
-        siguiente.hidden = true;
         botones.classList.remove('inactivos');
         botonVerdad.classList.remove('acierto', 'error');
         botonMito.classList.remove('acierto', 'error');
@@ -160,8 +202,10 @@
         veredicto.appendChild(h('p', { class: 'veredicto-texto' }, actual.d));
         veredicto.hidden = false;
 
-        siguiente.textContent = (indice === TOTAL - 1) ? 'Ver resultado' : 'Siguiente';
-        siguiente.hidden = false;
+        /* Pasa solo a la siguiente: en el totem nadie tiene que buscar el boton */
+        api.luego(function () {
+          if (!acabado) avanzar();
+        }, ESPERA);
       }
 
       function avanzar() {
@@ -206,7 +250,8 @@
         });
       }
 
-      return null;
+      /* Al salir del juego se devuelve el color de siempre a la app. */
+      return function () { document.body.classList.remove('spa'); };
     }
   });
 

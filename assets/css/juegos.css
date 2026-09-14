@@ -603,3 +603,205 @@ body.clinica .modal-caja{ border:1px solid rgba(120,175,225,.35); }
   .deco-cartel{ left:2%; top:26%; font-size:.85em; opacity:.8; }
   .deco-hojas{ width:7em; }
 }
+
+/* ====================== TEMA SPA (Mitos y Verdades) ======================
+   Blancos y verdes de cabina, hojas asomando y tarjetas flotando.
+   Todo cuelga de .tema-spa para no tocar el resto de juegos.
+   ======================================================================== */
+
+.tema-spa{
+  --ve-fuerte:#1E9C74;
+  --ve:#2FB98A;
+  --ve-claro:#5FD3B0;
+  --ve-agua:#E4F6EF;
+  --tinta-ve:#1F4A52;
+  --coral:#F26D6D;
+  background:
+    radial-gradient(90% 45% at 50% 0%,   #FFFFFF 0%, transparent 62%),
+    radial-gradient(120% 55% at 50% 100%, #DFF3EC 0%, transparent 68%),
+    linear-gradient(180deg, #F6FCFA 0%, #E9F6F1 100%);
+  color:var(--tinta-ve);
+}
+
+/* --- decorado del fondo --- */
+.spa-deco{ position:absolute; inset:0; overflow:hidden; pointer-events:none; z-index:0; }
+.spa-luz{
+  position:absolute; left:50%; top:-12%;
+  width:80%; height:70%;
+  transform:translateX(-50%) rotate(8deg);
+  background:linear-gradient(180deg, rgba(255,255,255,.85), rgba(255,255,255,0));
+  filter:blur(1.2em);
+}
+.spa-espejo{
+  position:absolute; left:1%; top:26%;
+  width:9em; height:9em;
+  border-radius:50%;
+  border:.45em solid rgba(214,196,150,.35);
+  background:radial-gradient(circle at 34% 28%, rgba(255,255,255,.95) 0%, rgba(208,236,228,.9) 55%, rgba(176,219,206,.85) 100%);
+  box-shadow:inset 0 .4em 1.2em rgba(90,160,140,.18);
+}
+.spa-hoja{ position:absolute; display:block; }
+.spa-hoja svg{ width:100%; height:100%; display:block; }
+.spa-hoja.h1{ left:-2.5em; top:-2.5em; width:10em; height:10em; transform:rotate(-8deg); }
+.spa-hoja.h2{ right:-3em; bottom:-2.5em; width:11em; height:11em; transform:scaleX(-1) rotate(-6deg); }
+.spa-hoja.h3{ left:-2em; bottom:-3em; width:7.5em; height:7.5em; transform:rotate(24deg); opacity:.7; }
+.spa-cartel{
+  position:absolute; right:7%; top:16%;
+  max-width:9em;
+  padding:.9em 1.3em;
+  font-family:var(--serif);
+  font-size:1.05em; line-height:1.35; text-align:center;
+  color:rgba(45,120,110,.4);
+  background:rgba(255,255,255,.55);
+  border-radius:.9em;
+  box-shadow:0 .5em 1.4em rgba(60,140,120,.10);
+  transform:rotate(2deg);
+}
+.spa-corazon{ display:block; color:rgba(45,150,130,.4); }
+.spa-tarro{
+  position:absolute; bottom:6%;
+  border-radius:.5em .5em .8em .8em;
+  background:linear-gradient(180deg, rgba(255,255,255,.9), rgba(214,240,232,.75));
+  box-shadow:0 .4em 1em rgba(60,140,120,.12);
+}
+.spa-tarro::before{
+  content:"";
+  position:absolute; left:22%; right:22%; top:-.55em;
+  height:.6em;
+  border-radius:.3em .3em 0 0;
+  background:rgba(150,205,190,.6);
+}
+.spa-tarro.t1{ left:6%;  width:2.6em; height:4.6em; }
+.spa-tarro.t2{ left:11%; width:2em;   height:3.2em; }
+
+.tema-spa > .marcador,
+.tema-spa > .progreso,
+.tema-spa > .centro,
+.tema-spa > .spa-pie{ position:relative; z-index:1; }
+
+/* --- marcador en pastillas --- */
+.tema-spa .dato{
+  display:flex; align-items:center; gap:.7em;
+  max-width:none;
+  padding:.5em 1.2em .5em .5em;
+  text-align:left;
+  background:rgba(255,255,255,.95);
+  border:1px solid rgba(120,205,180,.4);
+  border-radius:999px;
+  box-shadow:0 .5em 1.2em rgba(60,140,120,.14);
+}
+.tema-spa .dato-icono{ flex:none; width:2.4em; height:2.4em; display:block; }
+.tema-spa .dato-icono svg{ width:100%; height:100%; display:block; }
+.tema-spa .dato .val{ font-family:var(--serif); color:var(--tinta-ve); }
+.tema-spa .dato .etq{ color:#6C9C93; }
+
+.tema-spa .progreso{
+  background:rgba(190,225,214,.55);
+  box-shadow:inset 0 .1em .2em rgba(60,140,120,.16);
+}
+.tema-spa .progreso i{ background:linear-gradient(90deg, var(--ve-claro), var(--ve-fuerte)); }
+
+/* --- tarjeta de la frase --- */
+.tema-spa .panel{
+  background:rgba(255,255,255,.97);
+  border:1px solid rgba(120,205,180,.35);
+  border-radius:1.6em;
+  box-shadow:0 1em 2.4em rgba(60,140,120,.18);
+  padding-top:1.3em;
+}
+.mito-fila{ display:flex; align-items:center; gap:1em; }
+.mito-sello{ flex:none; width:3.2em; height:3.2em; }
+.mito-sello svg{ width:100%; height:100%; display:block; }
+.mito-texto{ flex:1; }
+.tema-spa .tarjeta-mito{ position:relative; text-align:left; padding-top:1.3em; }
+/* el sello redondo ya hace de marca: la comilla sobra */
+.tema-spa .comilla{ display:none; }
+.tema-spa .frase-mito{
+  margin:.2em 0 0;
+  text-align:left;
+  font-family:var(--serif);
+  color:var(--tinta-ve);
+}
+.tema-spa .veredicto{ border-top:1px solid rgba(120,205,180,.3); }
+.tema-spa .veredicto-titulo{ color:var(--ve-fuerte); }
+.tema-spa .veredicto-texto{ color:#5C8880; }
+
+/* --- los dos botones grandes --- */
+.tema-spa .juicios{ gap:1.2em; margin-top:1.4em; }
+.tema-spa .btn-juicio{
+  flex-direction:row; align-items:center; justify-content:center; gap:.7em;
+  padding:1em 1.2em;
+  font-family:var(--sans);
+  font-size:1.15em; font-weight:600;
+  border-radius:999px;
+  transition:transform .12s, box-shadow .12s;
+}
+.tema-spa .juicio-emoji{
+  flex:none;
+  width:2.1em; height:2.1em;
+  display:grid; place-items:center;
+  font-size:1em; line-height:1;
+  border-radius:50%;
+  box-shadow:inset 0 -.12em .2em rgba(0,0,0,.18);
+}
+.tema-spa .es-verdad{
+  color:#fff;
+  background:linear-gradient(160deg, #46D3A6, var(--ve-fuerte));
+  border:1px solid rgba(30,156,116,.5);
+  box-shadow:0 .3em 0 #17835F, 0 .55em 1.1em rgba(30,156,116,.3);
+}
+.tema-spa .es-verdad .juicio-emoji{ color:var(--ve-fuerte); background:#fff; }
+.tema-spa .es-mito{
+  color:#C2453F;
+  background:linear-gradient(180deg, #FFFFFF, #FDEDED);
+  border:1px solid rgba(242,109,109,.5);
+  box-shadow:0 .3em 0 rgba(242,109,109,.35), 0 .55em 1.1em rgba(200,90,90,.18);
+}
+.tema-spa .es-mito .juicio-emoji{ color:#fff; background:linear-gradient(160deg, #F98B8B, var(--coral)); }
+.tema-spa .btn-juicio:active{ transform:translateY(.24em); box-shadow:0 .06em 0 rgba(0,0,0,.15); }
+.tema-spa .btn-juicio.acierto{ box-shadow:0 0 0 .22em rgba(47,185,138,.35), 0 .3em 0 #17835F; }
+.tema-spa .btn-juicio.error{ box-shadow:0 0 0 .22em rgba(242,109,109,.35), 0 .3em 0 rgba(242,109,109,.35); }
+
+/* --- pie --- */
+.spa-pie{
+  flex:none;
+  display:flex; align-items:center; justify-content:center; gap:.6em;
+  margin:1em 0 0;
+  font-size:.78em; letter-spacing:.22em; text-transform:uppercase;
+  color:rgba(60,140,120,.6);
+}
+.spa-loto{ width:2.4em; height:1.5em; display:block; }
+.spa-loto svg{ width:100%; height:100%; display:block; }
+
+/* --- la app entera se tiñe mientras se juega --- */
+body.spa #app{
+  background:
+    radial-gradient(90% 45% at 50% 0%,   #FFFFFF 0%, transparent 62%),
+    radial-gradient(120% 55% at 50% 100%, #DCF1EA 0%, transparent 68%),
+    linear-gradient(180deg, #F6FCFA 0%, #E6F4EE 100%);
+}
+body.spa .barra{
+  background:rgba(248,253,251,.85);
+  border-bottom:1px solid rgba(120,205,180,.4);
+}
+body.spa .barra-centro h2{ color:#1F4A52; }
+body.spa .barra-centro p{ color:#6C9C93; }
+body.spa .btn-icono{ color:#1E9C74; background:#fff; border:1px solid rgba(120,205,180,.5); }
+body.spa .btn-icono:active{ background:#E4F6EF; }
+body.spa .reloj{
+  color:#1E9C74;
+  border:1px solid rgba(120,205,180,.5);
+  box-shadow:0 .4em 1em rgba(60,140,120,.14);
+}
+body.spa .reloj.poco{ color:#fff; border-color:var(--rojo); }
+body.spa .modal-caja{ border:1px solid rgba(120,205,180,.4); }
+
+/* En apaisado hay poca altura: se compacta para que entre todo */
+@media (min-aspect-ratio:1/1){
+  .tema-spa .frase-mito{ font-size:1.55em; }
+  .tema-spa .panel{ padding:1.1em 1.2em; }
+  .tema-spa .juicios{ margin-top:1em; gap:1em; }
+  .tema-spa .btn-juicio{ padding:.75em 1.1em; }
+  .spa-cartel{ font-size:.9em; top:12%; }
+  .spa-pie{ margin-top:.7em; }
+}
