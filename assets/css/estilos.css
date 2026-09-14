@@ -58,6 +58,22 @@ body{
 }
 
 html{ overscroll-behavior:none; }
+
+/* Boton de pantalla completa: discreto, arriba a la derecha, y solo mientras
+   el navegador siga a la vista. */
+.btn-pantalla{
+  /* Abajo a la izquierda: arriba a la derecha vive el boton de sonido de la
+     barra del juego, y se pisaban. Abajo izquierda no hay nada. */
+  position:fixed; left:.7em; bottom:.7em; z-index:80;
+  display:inline-flex; align-items:center; gap:.45em;
+  padding:.55em 1em;
+  font-family:var(--sans); font-size:.85em; font-weight:600;
+  color:var(--tinta-2); background:var(--blanco);
+  border:var(--linea); border-radius:999px;
+  box-shadow:var(--sombra); cursor:pointer;
+  opacity:.9;
+}
+.btn-pantalla:active{ transform:scale(.94); }
 img, canvas{ -webkit-user-drag:none; user-drag:none; }
 
 button{ font:inherit; color:inherit; }

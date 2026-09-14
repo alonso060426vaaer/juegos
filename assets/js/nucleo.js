@@ -178,6 +178,7 @@
     dom.modalMenu = document.getElementById('modal-menu');
     dom.atractor = document.getElementById('atractor');
     dom.reloj = document.getElementById('reloj');
+    dom.botonPantalla = document.getElementById('btn-pantalla');
     dom.intentos = document.getElementById('intentos');
     dom.relojNum = document.getElementById('reloj-num');
   }
@@ -609,10 +610,16 @@
        El navegador solo deja pedirlo dentro de un gesto del usuario, asi que
        se aprovecha cada toque. Cuando ya esta completa no hace nada. */
     document.addEventListener('pointerdown', pantallaCompleta, true);
-    document.addEventListener('fullscreenchange', function () {
-      /* Si alguien sale (Escape, F11), el siguiente toque la devuelve. */
-      pintarSonido();
-    });
+    document.addEventListener('fullscreenchange', pintarBotonPantalla);
+    document.addEventListener('webkitfullscreenchange', pintarBotonPantalla);
+    if (dom.botonPantalla) {
+      dom.botonPantalla.addEventListener('click', function () {
+        sonar('toque');
+        pantallaCompleta();
+        pintarBotonPantalla();
+      });
+    }
+    pintarBotonPantalla();
 
     // Permite abrir un juego directamente: index.html#trivia
     var atajo = (location.hash || '').replace('#', '');
@@ -643,11 +650,20 @@
     catch (e) { /* hara falta otro gesto */ }
   }
 
+  /** Ensena el boton solo mientras el navegador siga a la vista. */
+  function pintarBotonPantalla() {
+    if (!dom.botonPantalla) return;
+    var raiz = document.documentElement;
+    var sePuede = !!(raiz.requestFullscreen || raiz.webkitRequestFullscreen);
+    var yaEsta = !!(document.fullscreenElement || document.webkitFullscreenElement);
+    dom.botonPantalla.hidden = !sePuede || yaEsta;
+  }
+
   global.App = {
     registrar: registrar,
     iniciar: iniciar,
     pintar: pintar,
-    pantallaCompleta: pantallaCompleta,
+    pantallaCompleta: function () { pantallaCompleta(); pintarBotonPantalla(); },
     menu: irMenu,
     abrir: abrir,
     sonar: sonar,
