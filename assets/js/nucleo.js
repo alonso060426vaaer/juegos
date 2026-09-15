@@ -193,20 +193,61 @@
       try { limpiarActual(); } catch (e) { /* el juego ya no existe */ }
     }
     limpiarActual = null;
+    /* Al salir de un juego, fuera todo lo que quedara a medio irse: asi no
+       se cuela ningun fotograma viejo en la vista siguiente. */
+    limpiarSalidas();
     if (dom.reloj) { dom.reloj.hidden = true; dom.reloj.classList.remove('poco'); }
     cerrarModal();
   }
 
   /** Sustituye la vista actual con una transicion suave. */
+  /* Vistas que se estan yendo, con su temporizador de borrado. Hay que
+     llevar la cuenta: si no, una que se quede a medias no se borra nunca. */
+  var salidas = [];
+
+  /** Saca del DOM ahora mismo todo lo que estuviera saliendo. */
+  function limpiarSalidas() {
+    for (var i = 0; i < salidas.length; i++) {
+      clearTimeout(salidas[i].id);
+      var v = salidas[i].vista;
+      if (v.parentNode) v.parentNode.removeChild(v);
+    }
+    salidas = [];
+  }
+
+  /* Cambia la vista de pantalla con una transicion suave.
+
+     Antes esto cogia solo dom.pantalla.firstElementChild, y ahi estaba el
+     fallo: las vistas son position:absolute e inset:0, o sea que se apilan
+     una encima de otra. Al cambiar dos veces seguidas antes de que acabara
+     la animacion de 220 ms (volver al menu nada mas entrar a un juego, o la
+     salida automatica del turno), la segunda llamada volvia a coger LA
+     PRIMERA vista, que ya estaba saliendo, y la de en medio se quedaba
+     huerfana para siempre y a opacidad completa. Resultado: el ultimo
+     fotograma del juego, congelado, visible junto al menu.
+
+     Ahora salen TODAS las que hubiera, y lo que ya estaba saliendo se
+     borra de golpe en vez de esperar otra animacion. */
   function pintar(nuevaVista, limpieza) {
     if (typeof limpieza === 'function') limpiarActual = limpieza;
-    var anterior = dom.pantalla.firstElementChild;
-    if (anterior) {
-      anterior.classList.add('saliendo');
-      setTimeout(function () {
-        if (anterior.parentNode) anterior.parentNode.removeChild(anterior);
-      }, 220);
+
+    limpiarSalidas();
+
+    var viejas = [];
+    for (var i = 0; i < dom.pantalla.children.length; i++) {
+      viejas.push(dom.pantalla.children[i]);
     }
+    viejas.forEach(function (vieja) {
+      vieja.classList.add('saliendo');
+      var s = { vista: vieja, id: 0 };
+      s.id = setTimeout(function () {
+        if (vieja.parentNode) vieja.parentNode.removeChild(vieja);
+        var j = salidas.indexOf(s);
+        if (j !== -1) salidas.splice(j, 1);
+      }, 220);
+      salidas.push(s);
+    });
+
     dom.pantalla.appendChild(nuevaVista);
   }
 
