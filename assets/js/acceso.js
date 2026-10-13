@@ -6,8 +6,7 @@
 
    Aqui se revisa el FORMATO. Despues, en Vercel, api/boleta.js comprueba
    en Odoo que el comprobante exista, este emitido y sea reciente, y lo
-   anota para que no sirva dos veces. En el PC de pruebas (XAMPP) no hay
-   api/, asi que ahi solo se mira el formato.
+   anota para que no sirva dos veces. Sin esa respuesta no se entra.
 
    Formatos que se aceptan:
      Electronico   B001-00001234   boleta    (B + 3 y hasta 8 digitos)
@@ -64,8 +63,12 @@
   var ELECTRONICO = /^([BF][A-Z0-9]{3})-?(\d{1,8})$/;
   var IMPRESO     = /^(\d{3,4})-(\d{3,8})$/;
 
-  var EN_LOCAL = /^(localhost|127\.0\.0\.1|192\.168\.|10\.)/.test(location.hostname) ||
-                 location.protocol === 'file:';
+  /* Siempre se consulta a Odoo, se abra desde donde se abra: en Vercel
+     con la ruta corta y desde XAMPP, el totem o un archivo suelto con la
+     direccion completa. Si no hay respuesta, no se entra. */
+  var API = /\.vercel\.app$/.test(location.hostname)
+    ? 'api/boleta'
+    : 'https://juegos-silk.vercel.app/api/boleta';
 
   var autorizado = false;
   var comprobante = '';
@@ -178,15 +181,12 @@
       var r = revisar(escrito);
       if (r.error) { rechazar(r.error); return; }
 
-      /* En el PC de pruebas (XAMPP) no existe api/: ahi basta con el formato. */
-      if (EN_LOCAL) { dejarPasar(r); return; }
-
       comprobando = true;
       entrar.disabled = true;
       aviso.className = 'acceso-aviso';
       avisoTexto.textContent = 'Comprobando tu boleta…';
 
-      fetch('api/boleta', {
+      fetch(API, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ numero: r.numero })

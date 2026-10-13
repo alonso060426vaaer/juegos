@@ -85,6 +85,12 @@ async function marcarUsada(numero) {
 }
 
 module.exports = async function (req, res) {
+  /* La pantalla tambien se abre desde XAMPP o el totem, que son otra
+     direccion: el navegador solo deja llamar aqui si se le da permiso. */
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'POST') return responder(res, 405, { ok: false, mensaje: 'Usa POST' });
 
   var numero = normalizar(req.body && req.body.numero);
