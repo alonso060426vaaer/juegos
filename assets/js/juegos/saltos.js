@@ -1,8 +1,9 @@
 /* ==========================================================================
    JUEGO 9 - SALTO INFINITO (al estilo del clasico de saltar entre bloques)
-   El que salta es el emblema del logo. El viaje va por etapas: amanece sobre
-   las colinas, cruzas el mar de nubes con globos, llega la aurora y acabas
-   entre planetas. Los bloques cambian de material segun la altura.
+   La que salta es la doctora. Se arranca desde la ciudad de la foto, con sus
+   arboles y matas, y el viaje sigue por etapas: el mar de nubes con globos,
+   la aurora y al final los planetas. Las plataformas son de hierba (fotos)
+   y cambian de color segun la altura. Por el camino hay billetes que cobrar.
    ========================================================================== */
 
 (function () {
@@ -17,14 +18,15 @@
   var FH = 150;
   var FH_MIN = 90, FH_MAX = 190;
 
-  var RADIO    = 5.2;        // el saltador
+  var RADIO    = 6;          // el choque con las plataformas: los pies van en y-RADIO
+  var ALTO_DRA = 22;         // alto de la doctora, de la cabeza a los tacones
   var GRAVEDAD = 210;
   var SALTO    = 96;         // impulso al pisar un bloque
   var MUELLE   = 168;        // impulso del trampolin
   var VEL_LADO = 62;         // con teclado
 
   var BLOQUE_AN = 17, BLOQUE_AL = 3.6;
-  var OBJETIVO = 120;        // metros para llevarse el premio
+  var OBJETIVO = 70;         // metros para llevarse el premio
 
   /* Etapas del viaje: color del cielo arriba y abajo. */
   var CIELOS = [
@@ -44,17 +46,80 @@
     return 'neon';
   }
 
-  /* El saltador lleva el emblema del logo (el circulo de arriba del png). */
-  var logo = new Image();
-  var logoListo = false;
-  var recorte = null;
-  logo.addEventListener('load', function () {
-    var an = logo.naturalWidth, al = logo.naturalHeight;
-    if (an / al > 1.15) recorte = { x: an * 0.30, y: al * 0.145, w: an * 0.40, h: al * 0.48 };
-    else recorte = { x: 0, y: 0, w: an, h: al };
-    logoListo = true;
-  });
-  logo.src = 'assets/img/logo.png';
+  /* ---------------------------------------------------------------
+     Imagenes. Se cargan una vez por sesion y se comparten entre partidas.
+     --------------------------------------------------------------- */
+  var RUTA = 'assets/img/saltos/';
+  var ARCHIVOS = {
+    cuerpo: 'doctora-cuerpo.png',
+    nube1: 'nube-1.png',
+    nube2: 'nube-2.png',
+    nube3: 'nube-3.png',
+    nube4: 'nube-4.png',
+    ciudad: 'ciudad.png',
+    billete: 'billete.png',
+    plataforma1: 'plataforma-1.png',
+    plataforma2: 'plataforma-2.png',
+    plataforma3: 'plataforma-3.png',
+    plataforma4: 'plataforma-4.png',
+    arbol1: 'arbol-1.png',
+    arbol2: 'arbol-2.png',
+    arbusto1: 'arbusto-1.png',
+    arbusto2: 'arbusto-2.png',
+    arbusto3: 'arbusto-3.png',
+    arbusto4: 'arbusto-4.png',
+    arbusto5: 'arbusto-5.png',
+    arbusto6: 'arbusto-6.png'
+  };
+  var IMG = {};
+
+  function cargar(alTerminar) {
+    var faltan = 0;
+    function una() { if (--faltan === 0) alTerminar(); }
+    Object.keys(ARCHIVOS).forEach(function (n) {
+      var im = IMG[n];
+      if (!im) {
+        im = new Image();
+        im.src = RUTA + ARCHIVOS[n];
+        IMG[n] = im;
+      }
+      if (im.complete) return;
+      faltan++;
+      im.addEventListener('load', una);
+      im.addEventListener('error', una);
+    });
+    if (faltan === 0) alTerminar();
+  }
+
+  function lista(n) {
+    var im = IMG[n];
+    return !!(im && im.complete && im.naturalWidth > 0);
+  }
+
+  /** Alto que le toca a una imagen si se pinta con este ancho. */
+  function alto(n, ancho) {
+    var im = IMG[n];
+    return lista(n) ? ancho * im.naturalHeight / im.naturalWidth : ancho * 0.4;
+  }
+
+  /** Que ancho le toca a una imagen si se pinta con este alto. */
+  function ancho(n, alto) {
+    var im = IMG[n];
+    return lista(n) ? alto * im.naturalWidth / im.naturalHeight : alto * 0.26;
+  }
+
+  /** Pinta una imagen por su nombre; si falta el alto se saca de la proporcion. */
+  function imagen(g, n, x, y, w, hh, volteoX) {
+    if (!lista(n)) return;
+    var im = IMG[n];
+    if (hh === undefined || hh === null) hh = w * im.naturalHeight / im.naturalWidth;
+    if (!volteoX) { g.drawImage(im, x, y, w, hh); return; }
+    g.save();
+    g.translate(x + w, y);
+    g.scale(-1, 1);
+    g.drawImage(im, 0, 0, w, hh);
+    g.restore();
+  }
 
   function mezclaColor(a, b, t) {
     var ax = parseInt(a.slice(1), 16), bx = parseInt(b.slice(1), 16);
@@ -73,19 +138,6 @@
     g.arcTo(x, y + al, x, y, r);
     g.arcTo(x, y, x + an, y, r);
     g.closePath();
-  }
-
-  /** Nube de varios bultos en un solo trazo (sin bordes entre ellos). */
-  function bultos(g, x, y, r, color) {
-    g.fillStyle = color;
-    g.beginPath();
-    var p = [[0, 0, 1.65, 0.55], [0.95, -0.3, 0.95, 0.52], [-0.9, -0.12, 0.8, 0.44], [1.85, 0.1, 0.62, 0.3]];
-    for (var i = 0; i < p.length; i++) {
-      var cx = x + p[i][0] * r, cy = y + p[i][1] * r;
-      g.moveTo(cx + p[i][2] * r, cy);
-      g.ellipse(cx, cy, p[i][2] * r, p[i][3] * r, 0, 0, TAU);
-    }
-    g.fill();
   }
 
   App.registrar({
@@ -112,6 +164,8 @@
       /* ------------------------- Pantalla ------------------------- */
       var valAltura = h('span', { class: 'val' }, '0');
       var valMejor  = h('span', { class: 'val' }, mejor || '–');
+      var valBilletes = h('span', { class: 'val' }, '0');
+      var cobrados = 0;
       var aviso = h('p', { class: 'aviso' }, 'Arrastra el dedo para moverte de lado');
 
       var lienzo = h('canvas', { class: 'saltos' });
@@ -123,6 +177,7 @@
 
       vista.appendChild(h('div', { class: 'marcador' },
         h('div', { class: 'dato' }, valAltura, h('span', { class: 'etq' }, 'Metros')),
+        h('div', { class: 'dato' }, valBilletes, h('span', { class: 'etq' }, 'Billetes')),
         h('div', { class: 'dato' }, valMejor,  h('span', { class: 'etq' }, 'Récord'))
       ));
       vista.appendChild(h('div', { class: 'centro' }, zona, aviso));
@@ -144,7 +199,7 @@
         lienzo.style.width  = Math.round(an) + 'px';
         lienzo.style.height = Math.round(al) + 'px';
 
-        var dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+        var dpr = Math.min(window.devicePixelRatio || 1, 1.5);   // mas no se nota y pesa el doble
         lienzo.width  = Math.round(an * dpr);
         lienzo.height = Math.round(al * dpr);
         escala = (an * dpr) / FW;
@@ -205,30 +260,15 @@
         }
       }
 
-      /* La ciudad del arranque: la clinica en el centro y a los lados los
-         bloques y los arboles, todos apoyados en la misma linea. */
+      /* La ciudad del arranque: la foto al fondo (capa lejana), apoyada en
+         el suelo, y delante los arboles y las matas, todos en la misma linea. */
       function sembrarCiudad() {
-        var suelo = 9;
-        var piezas = [
-          { x: 50, t: 'clinica',  e: 1.0 },
-          { x: 17, t: 'edificio', e: 1.05 },
-          { x: 30, t: 'edificio', e: 0.85 },
-          { x: 71, t: 'edificio', e: 0.95 },
-          { x: 86, t: 'edificio', e: 1.1 },
-          { x: 7,  t: 'arbol',    e: 1.3 },
-          { x: 62, t: 'arbol',    e: 1.1 },
-          { x: 96, t: 'arbol',    e: 1.2 }
-        ];
-        for (var i = 0; i < piezas.length; i++) {
-          capas[0].lista.push({
-            x: piezas[i].x, y: suelo, t: piezas[i].t,
-            e: piezas[i].e, f: Math.random() * TAU, tono: Math.random()
-          });
-        }
-        /* arbustos por delante, en la capa intermedia */
-        for (var j = 0; j < 5; j++) {
+        capas[0].lista.push({ x: FW / 2, y: 9, t: 'ciudad', e: 1, f: 0, tono: 0 });
+        capas[1].lista.push({ x: 11, y: 6, t: 'arbol', e: 1.15, f: 0, tono: 0.2 });
+        capas[1].lista.push({ x: 90, y: 6, t: 'arbol', e: 1.0, f: 0, tono: 0.8 });
+        for (var j = 0; j < 6; j++) {
           capas[1].lista.push({
-            x: 8 + j * 21 + Math.random() * 6, y: 5, t: 'arbusto',
+            x: 5 + j * 18 + Math.random() * 8, y: 4.5, t: 'arbusto',
             e: 0.8 + Math.random() * 0.5, f: 0, tono: Math.random()
           });
         }
@@ -273,6 +313,7 @@
           fase: Math.random() * TAU          // desfase del parpadeo (fantasma)
         };
         if (tipo === 'firme' && Math.random() < 0.06) b.muelle = true;
+        else if (tipo === 'firme' && Math.random() < 0.22) b.billete = { fase: Math.random() * TAU, cobrado: false };
         return b;
       }
 
@@ -281,7 +322,8 @@
         /* Suelo de salida: mientras no has subido, no te puedes caer.
            Cuando la camara sube se queda abajo y desaparece solo. */
         bloques.push({ x: -3, y: 4, w: FW + 6, tipo: 'firme', vx: 0, muelle: false, roto: false, semilla: 0.5 });
-        bloques.push({ x: FW / 2 - 14, y: 16, w: 28, tipo: 'firme', vx: 0, muelle: false, roto: false, semilla: 0.2 });
+        bloques.push({ x: FW / 2 - 14, y: 16, w: 28, tipo: 'firme', vx: 0, muelle: false, roto: false, semilla: 0.2,
+                       billete: { fase: 0, cobrado: false } });
         tope = 16;
         while (tope < FH * 1.6) {
           tope += separacion();
@@ -360,6 +402,26 @@
           if (jugador.x + RADIO * 0.55 < b.x || jugador.x - RADIO * 0.55 > b.x + b.w) continue;
           pisar(b);
           break;
+        }
+
+        /* billetes: se cobran al rozarlos, subiendo o bajando */
+        for (i = 0; i < bloques.length; i++) {
+          b = bloques[i];
+          if (!b.billete || b.billete.cobrado || b.roto) continue;
+          var bx = b.x + b.w / 2, by = b.y + 7;
+          var dx = jugador.x - bx, dy = jugador.y - by;
+          if (dx * dx + dy * dy > (RADIO + 3) * (RADIO + 3)) continue;
+          b.billete.cobrado = true;
+          cobrados++;
+          valBilletes.textContent = cobrados;
+          dinero();
+          for (var q = 0; q < 10; q++) {
+            chispas.push({
+              x: bx, y: by,
+              vx: (Math.random() - 0.5) * 30, vy: 6 + Math.random() * 26,
+              vida: 0.5, color: '#FFE45C'
+            });
+          }
         }
 
         if (!terminado && jugador.y > camara + FH * 0.52) {
@@ -468,6 +530,15 @@
         }
       }
 
+      /** Caja registradora: el clic del cajon y el timbre, con monedas. */
+      function dinero() {
+        if (App.ruido) App.ruido(0.06, 0.3, 5000, 1500);
+        App.tono(2093, 0.28, 0.16, 'sine');
+        api.luego(function () { App.tono(2637, 0.45, 0.14, 'sine'); }, 70);
+        api.luego(function () { App.tono(3136, 0.12, 0.08, 'triangle'); }, 180);
+        api.luego(function () { App.tono(3520, 0.10, 0.07, 'triangle'); }, 260);
+      }
+
       function acabar(porTiempo) {
         if (terminado) return;
         terminado = true;
@@ -492,6 +563,7 @@
               : 'Muévete antes de tocar el bloque y llegarás más lejos.',
             datos: [
               { val: altura, etq: 'Metros' },
+              { val: cobrados, etq: 'Billetes' },
               { val: mejor, etq: 'Récord' }
             ]
           });
@@ -594,6 +666,32 @@
         }
       }
 
+      /* ---------------------------------------------------------------
+         LAS NUBES SON LAS DE LA FOTO
+
+         Antes, en cuanto se dejaba atras la ciudad, el cielo se quedaba en
+         un degradado con manchas blancas dibujadas a mano y se notaba el
+         bajon. Estas nubes estan recortadas de la MISMA foto de la ciudad
+         (ver herramientas/preparar-assets-saltos.py), asi que al subir el
+         cielo sigue con el mismo dibujo en vez de empeorar.
+
+         Se apagan poco a poco a partir del atardecer: una nube blanca de
+         mediodia sobre un cielo de noche cantaria.
+         --------------------------------------------------------------- */
+      var NUBES = ['nube1', 'nube3', 'nube2', 'nube4'];
+
+      function luzNube() {
+        return Math.max(0.16, Math.min(1, 1 - (cima - 2000) / 2800));
+      }
+
+      function nubeFoto(a, x, y, an, alfa, salto) {
+        var n = NUBES[(Math.floor(a.tono * 4) + salto) % 4];
+        var al = alto(n, an);
+        ctx.globalAlpha = alfa * luzNube();
+        imagen(ctx, n, x - an / 2, y - al / 2, an, al, a.f > Math.PI);
+        ctx.globalAlpha = 1;
+      }
+
       /* --------------------- Adornos del fondo --------------------- */
       function pintarCapa(n) {
         var capa = capas[n];
@@ -610,57 +708,39 @@
         var e = a.e;
         switch (a.t) {
 
-          case 'clinica':
-            clinica(a, y, e);
+          case 'ciudad': {
+            var cw = FW * 1.12, ch = alto('ciudad', cw);
+            imagen(ctx, 'ciudad', a.x - cw / 2, y - ch, cw, ch);
             break;
+          }
 
-          case 'edificio':
-            edificio(a, y, e);
+          case 'arbol': {
+            var an = a.tono < 0.5 ? 'arbol1' : 'arbol2';
+            var aw = 26 * e, ah = alto(an, aw);
+            imagen(ctx, an, a.x - aw / 2, y - ah, aw, ah);
             break;
+          }
 
-          case 'arbusto':
-            ctx.fillStyle = a.tono < 0.5 ? '#6FBF54' : '#57A843';
-            ctx.beginPath();
-            ctx.arc(a.x, y, 3.4 * e, 0, TAU);
-            ctx.arc(a.x - 2.6 * e, y + 1.2 * e, 2.5 * e, 0, TAU);
-            ctx.arc(a.x + 2.7 * e, y + 1.1 * e, 2.7 * e, 0, TAU);
-            ctx.fill();
-            ctx.fillStyle = 'rgba(255,255,255,.22)';
-            ctx.beginPath();
-            ctx.arc(a.x - 0.8 * e, y - 1.2 * e, 1.5 * e, 0, TAU);
-            ctx.fill();
+          case 'arbusto': {
+            var mn = 'arbusto' + (1 + Math.floor(a.tono * 6) % 6);
+            var mw = 12 * e, mh = alto(mn, mw);
+            imagen(ctx, mn, a.x - mw / 2, y - mh, mw, mh, a.tono > 0.5);
             break;
-
-          case 'arbol':
-            ctx.strokeStyle = '#9A7550';
-            ctx.lineWidth = 1.1 * e;
-            ctx.lineCap = 'round';
-            ctx.beginPath();
-            ctx.moveTo(a.x, y + 8 * e);
-            ctx.lineTo(a.x, y - 2 * e);
-            ctx.stroke();
-            ctx.fillStyle = '#6E9E7C';
-            ctx.beginPath();
-            ctx.arc(a.x, y - 5 * e, 4.2 * e, 0, TAU);
-            ctx.arc(a.x - 3 * e, y - 2 * e, 3 * e, 0, TAU);
-            ctx.arc(a.x + 3 * e, y - 2.4 * e, 2.8 * e, 0, TAU);
-            ctx.fill();
-            break;
+          }
 
           case 'marNubes':                               // mar de nubes del fondo
-            bultos(ctx, a.x, y, 13 * e, 'rgba(255,255,255,.5)');
-            bultos(ctx, a.x - 22 * e, y + 4 * e, 10 * e, 'rgba(255,255,255,.38)');
+            nubeFoto(a, a.x, y, 42 * e, 0.62, 0);
+            nubeFoto(a, a.x - 27 * e, y + 5 * e, 31 * e, 0.4, 1);
             break;
 
           case 'nube':
-            var tenue = (cima > 1400 && cima < 3500) ? 0.45 : 1;   // sin tapar los bloques-nube
-            bultos(ctx, a.x, y + Math.sin(tiempo * 0.4 + a.f) * 0.8, 7 * e,
-                   'rgba(255,255,255,' + ((0.5 + a.tono * 0.35) * tenue).toFixed(2) + ')');
-            bultos(ctx, a.x + 1.4 * e, y + 2.2 * e, 5.6 * e, 'rgba(255,226,180,.22)');
+            var tenue = (cima > 1400 && cima < 3500) ? 0.55 : 1;   // sin tapar los bloques-nube
+            nubeFoto(a, a.x, y + Math.sin(tiempo * 0.4 + a.f) * 0.8, 25 * e,
+                     (0.72 + a.tono * 0.22) * tenue, 0);
             break;
 
           case 'nubeCerca':
-            bultos(ctx, a.x, y, 17 * e, 'rgba(255,255,255,.28)');
+            nubeFoto(a, a.x, y, 56 * e, 0.34, 2);
             break;
 
           case 'pajaro':
@@ -768,77 +848,6 @@
       }
 
       /** La clinica: fachada blanca, cristaleras y su lema. */
-      function clinica(a, y, e) {
-        var an = 30 * e, al = 21 * e;
-        var cx = Math.max(an / 2 + 1, Math.min(FW - an / 2 - 1, a.x));
-        var x = cx - an / 2;
-
-        ctx.fillStyle = 'rgba(30,60,90,.12)';
-        ctx.fillRect(x + 1.2, y - al + 1.2, an, al);
-
-        var f = ctx.createLinearGradient(0, y - al, 0, y);
-        f.addColorStop(0, '#FFFFFF');
-        f.addColorStop(1, '#E3EEF6');
-        ctx.fillStyle = f;
-        caja(ctx, x, y - al, an, al, 1.4 * e);
-        ctx.fill();
-
-        /* cristaleras */
-        ctx.fillStyle = 'rgba(126,186,226,.75)';
-        for (var fi = 0; fi < 3; fi++) {
-          for (var co = 0; co < 4; co++) {
-            caja(ctx, x + an * (0.12 + co * 0.22), y - al * (0.58 - fi * 0.17),
-                 an * 0.15, al * 0.1, 0.4 * e);
-            ctx.fill();
-          }
-        }
-
-        /* banda del lema */
-        ctx.fillStyle = 'rgba(62,155,228,.16)';
-        caja(ctx, x + an * 0.08, y - al * 0.92, an * 0.84, al * 0.2, 0.6 * e);
-        ctx.fill();
-        ctx.fillStyle = 'rgba(40,80,120,.7)';
-        ctx.font = '600 ' + (2.1 * e).toFixed(2) + 'px "Segoe UI", system-ui, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('TU BIENESTAR', cx, y - al * 0.82);
-
-        /* marquesina y puerta */
-        ctx.fillStyle = '#CFE3F2';
-        caja(ctx, x + an * 0.32, y - al * 0.22, an * 0.36, al * 0.06, 0.4 * e);
-        ctx.fill();
-        ctx.fillStyle = '#9CC8E6';
-        caja(ctx, x + an * 0.38, y - al * 0.17, an * 0.24, al * 0.17, 0.5 * e);
-        ctx.fill();
-
-        /* arbustos a los pies */
-        ctx.fillStyle = '#5FB246';
-        ctx.beginPath();
-        ctx.arc(x + an * 0.12, y - 1 * e, 2.6 * e, 0, TAU);
-        ctx.arc(x + an * 0.88, y - 1 * e, 2.3 * e, 0, TAU);
-        ctx.fill();
-      }
-
-      /** Bloques de la ciudad, al fondo. */
-      function edificio(a, y, e) {
-        var an = (9 + a.tono * 7) * e, al = (14 + a.tono * 16) * e;
-        var x = a.x - an / 2;
-        var g = ctx.createLinearGradient(0, y - al, 0, y);
-        g.addColorStop(0, '#DCE9F4');
-        g.addColorStop(1, '#B6CEE2');
-        ctx.fillStyle = g;
-        caja(ctx, x, y - al, an, al, 0.8 * e);
-        ctx.fill();
-        ctx.fillStyle = 'rgba(110,160,200,.55)';
-        for (var fi = 0; fi < 4; fi++) {
-          for (var co = 0; co < 3; co++) {
-            if ((fi + co + Math.floor(a.tono * 9)) % 3 === 0) continue;
-            ctx.fillRect(x + an * (0.16 + co * 0.28), y - al * (0.82 - fi * 0.19),
-                         an * 0.17, al * 0.1);
-          }
-        }
-      }
-
       function globo(a, y, e) {
         var bal = Math.sin(tiempo * 0.5 + a.f) * 1.2;
         var x = a.x + bal;
@@ -931,39 +940,70 @@
 
       /* --------------------- Bloques --------------------- */
       /* ---------------------------------------------------------------
-         Plataformas al estilo de la referencia: base de roca oscura con
-         el canto irregular y encima la capa viva (cesped, nieve, cristal
-         o neon segun la altura), con matas y hojas asomando.
+         Plataformas: una de las cuatro fotos de hierba, elegida por la
+         semilla del bloque. El material de cada etapa (hierba, nube,
+         cristal, neon) se consigue con un filtro de color sobre la foto.
          --------------------------------------------------------------- */
-      var MATERIAL = {
-        hierba:  { r1: '#63707F', r2: '#2E3643', c1: '#8FD95C', c2: '#4E9E2C', mata: '#6FC244', hoja: '#93E36C' },
-        nube:    { r1: '#9FB2C4', r2: '#5D7288', c1: '#FFFFFF', c2: '#CFE2F0', mata: '#EAF4FB', hoja: '#FFFFFF' },
-        cristal: { r1: '#6E5C46', r2: '#3A3026', c1: '#FFE9B8', c2: '#D9A441', mata: '#F5D089', hoja: '#FFF3D2' },
-        neon:    { r1: '#3D4557', r2: '#1C2230', c1: '#59E4D6', c2: '#1B8E92', mata: '#8CF5EC', hoja: '#BFFFF8' }
+      var FILTRO = {
+        hierba:  null,
+        nube:    'saturate(.25) brightness(1.35)',
+        cristal: 'sepia(.7) saturate(1.6) brightness(1.05)',
+        neon:    'hue-rotate(115deg) saturate(1.7) brightness(1.1)'
       };
+      var CON_FILTRO = !!(ctx && ctx.filter !== undefined);
+      var tenidas = {};                         // lienzos ya tenidos: [filtro][nombre]
 
-      /** Una hoja redondeada, como las de las matas. */
-      function hoja(cx, cy, r, ang, color) {
-        ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(ang);
-        ctx.fillStyle = color;
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.quadraticCurveTo(r * 0.95, -r * 0.55, 0, -r * 1.7);
-        ctx.quadraticCurveTo(-r * 0.95, -r * 0.55, 0, 0);
-        ctx.fill();
-        ctx.restore();
+      /** Devuelve la foto ya tenida (se calcula una sola vez por material). */
+      function tenida(nombre, filtro) {
+        if (!filtro || !CON_FILTRO) return IMG[nombre];
+        var clave = filtro + '|' + nombre;
+        if (tenidas[clave]) return tenidas[clave];
+        var im = IMG[nombre];
+        var c = document.createElement('canvas');
+        c.width = im.naturalWidth; c.height = im.naturalHeight;
+        var g = c.getContext('2d');
+        g.filter = filtro;
+        g.drawImage(im, 0, 0);
+        tenidas[clave] = c;
+        return c;
+      }
+
+      /** Pinta una plataforma con su foto; la linea de hierba queda en y. */
+      function foto(nombre, x, y, an, filtro) {
+        if (!lista(nombre)) {                            // mientras llega la foto
+          ctx.fillStyle = '#6FC244';
+          caja(ctx, x, y - 0.3, an, BLOQUE_AL + 1.2, 1.2);
+          ctx.fill();
+          return;
+        }
+        var al = alto(nombre, an);
+        ctx.drawImage(tenida(nombre, filtro), x, y - al * 0.18, an, al);
       }
 
       function pintarBloque(x, y, an, b) {
-        var m = MATERIAL[piel(b.y !== undefined ? b.y : camara)];
         var tipo = b.tipo, muelle = b.muelle, semilla = b.semilla || 0.5;
+        var filtro = FILTRO[piel(b.y !== undefined ? b.y : camara)];
 
         /* el fantasma se desvanece y vuelve; cuando esta palido no se pisa */
         var vis = verse(b);
         var fantasma = tipo === 'fantasma';
         if (fantasma) ctx.globalAlpha = 0.18 + 0.82 * vis;
+
+        /* el suelo de salida: hierba seguida y un muro de piedra debajo */
+        if (an > FW) {
+          var muro = ctx.createLinearGradient(0, y + 2, 0, FH);
+          muro.addColorStop(0, '#7A6A55');
+          muro.addColorStop(1, '#3E3226');
+          ctx.fillStyle = muro;
+          ctx.fillRect(0, y + 2, FW, FH - y);
+          ctx.fillStyle = 'rgba(255,255,255,.08)';
+          for (var px = 0; px < FW; px += 9) {
+            caja(ctx, px + ((y | 0) % 2) * 4, y + 4 + (px % 3) * 1.5, 7, 3.2, 1.2);
+            ctx.fill();
+          }
+          for (var tx = x; tx < x + an; tx += 24) foto('plataforma2', tx, y, 30, filtro);
+          return;
+        }
 
         /* sombra en el suelo */
         ctx.fillStyle = 'rgba(20,30,45,.18)';
@@ -973,73 +1013,7 @@
 
         if (muelle) resorte(x + an / 2, y);
 
-        /* --- base de roca, con el canto de abajo irregular --- */
-        var alto = BLOQUE_AL + 1.6;
-        var gr = ctx.createLinearGradient(0, y, 0, y + alto);
-        gr.addColorStop(0, m.r1);
-        gr.addColorStop(1, m.r2);
-        ctx.fillStyle = gr;
-        ctx.beginPath();
-        ctx.moveTo(x + 1.4, y + 0.6);
-        ctx.lineTo(x + an - 1.4, y + 0.6);
-        ctx.quadraticCurveTo(x + an + 0.2, y + 0.6, x + an - 0.9, y + alto * 0.5);
-        ctx.quadraticCurveTo(x + an * 0.76, y + alto * 1.25, x + an * 0.58, y + alto * 0.82);
-        ctx.quadraticCurveTo(x + an * 0.44, y + alto * 1.3, x + an * 0.28, y + alto * 0.85);
-        ctx.quadraticCurveTo(x + an * 0.14, y + alto * 1.15, x + 0.9, y + alto * 0.5);
-        ctx.quadraticCurveTo(x - 0.2, y + 0.6, x + 1.4, y + 0.6);
-        ctx.closePath();
-        ctx.fill();
-
-        /* vetas claras de la roca */
-        ctx.strokeStyle = 'rgba(255,255,255,.12)';
-        ctx.lineWidth = 0.3;
-        ctx.beginPath();
-        ctx.moveTo(x + an * 0.2, y + alto * 0.72);
-        ctx.lineTo(x + an * 0.34, y + alto * 0.62);
-        ctx.moveTo(x + an * 0.62, y + alto * 0.78);
-        ctx.lineTo(x + an * 0.78, y + alto * 0.66);
-        ctx.stroke();
-
-        /* --- capa viva encima, que cae un poco por los lados --- */
-        var cg = ctx.createLinearGradient(0, y - 0.4, 0, y + 2.4);
-        cg.addColorStop(0, m.c1);
-        cg.addColorStop(1, m.c2);
-        ctx.fillStyle = cg;
-        caja(ctx, x - 0.3, y - 0.3, an + 0.6, 2.5, 1.2);
-        ctx.fill();
-        ctx.beginPath();                                  /* gotas que cuelgan */
-        for (var d = 0; d < 3; d++) {
-          var dx = x + an * (0.24 + d * 0.26);
-          ctx.moveTo(dx + 1.1, y + 1.9);
-          ctx.arc(dx, y + 1.9, 1.1, 0, TAU);
-        }
-        ctx.fill();
-
-        /* brillo del canto superior */
-        ctx.strokeStyle = 'rgba(255,255,255,.45)';
-        ctx.lineWidth = 0.35;
-        ctx.beginPath();
-        ctx.moveTo(x + 1.4, y + 0.25);
-        ctx.lineTo(x + an - 1.4, y + 0.25);
-        ctx.stroke();
-
-        /* --- matas y hojas asomando --- */
-        var matas = 2 + Math.floor(semilla * 2);
-        for (var k = 0; k < matas; k++) {
-          var mx = x + an * (0.2 + k * (0.6 / Math.max(1, matas - 1))) + (semilla - 0.5) * 1.5;
-          hoja(mx, y - 0.1, 0.9 + ((k + semilla) % 2) * 0.3, -0.5 + k * 0.5, m.hoja);
-          hoja(mx + 0.7, y + 0.1, 0.75, 0.6 - k * 0.3, m.mata);
-        }
-        ctx.strokeStyle = m.mata;
-        ctx.lineWidth = 0.34;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        for (var g = 0; g < 4; g++) {
-          var gx = x + an * (0.12 + g * 0.24 + (semilla - 0.5) * 0.06);
-          ctx.moveTo(gx, y + 0.5);
-          ctx.quadraticCurveTo(gx + 0.25, y - 0.4, gx + 0.7, y - 0.9);
-        }
-        ctx.stroke();
+        foto('plataforma' + (1 + Math.floor(semilla * 4) % 4), x, y, an, filtro);
 
         /* --- avisos de cada tipo --- */
         if (tipo === 'movil') {
@@ -1056,13 +1030,15 @@
           }
         }
         if (tipo === 'fragil') {
-          ctx.strokeStyle = 'rgba(40,25,20,.5)';
-          ctx.lineWidth = 0.26;
+          ctx.strokeStyle = 'rgba(40,25,20,.6)';
+          ctx.lineWidth = 0.3;
           ctx.beginPath();
-          ctx.moveTo(x + an * 0.34, y + 2.4);
-          ctx.lineTo(x + an * 0.4, y + alto * 0.9);
-          ctx.moveTo(x + an * 0.6, y + 2.5);
-          ctx.lineTo(x + an * 0.54, y + alto * 0.95);
+          ctx.moveTo(x + an * 0.34, y + 1.4);
+          ctx.lineTo(x + an * 0.42, y + 3.6);
+          ctx.lineTo(x + an * 0.38, y + 5.2);
+          ctx.moveTo(x + an * 0.62, y + 1.6);
+          ctx.lineTo(x + an * 0.56, y + 3.8);
+          ctx.lineTo(x + an * 0.61, y + 5.4);
           ctx.stroke();
         }
         if (fantasma) {
@@ -1099,6 +1075,15 @@
           var y = pantalla(b.y);
           if (y < -10 || y > FH + 10) continue;
           pintarBloque(b.x, y, b.w, b);
+          if (b.billete && !b.billete.cobrado) {
+            var bw = 8, bh = alto('billete', bw);
+            var by = y - 7 + Math.sin(tiempo * 3 + b.billete.fase) * 0.7;
+            ctx.save();
+            ctx.translate(b.x + b.w / 2, by);
+            ctx.rotate(Math.sin(tiempo * 2 + b.billete.fase) * 0.15);
+            imagen(ctx, 'billete', -bw / 2, -bh / 2, bw, bh);
+            ctx.restore();
+          }
         }
       }
 
@@ -1140,32 +1125,82 @@
         ctx.globalAlpha = 1;
       }
 
+      /* ---------------------------------------------------------------
+         LA CHAPA DE LOS 50 m, 100 m...
+
+         Era un rectangulito plano con el numero pequeno y pasaba sin que
+         nadie lo viera. Ahora es una chapa dorada de las de la casa: entra
+         dando un saltito con un destello, tiene relieve (sombra, degradado
+         y filo claro), dos estrellas a los lados y el numero bien grande.
+         --------------------------------------------------------------- */
+      function estrellita(x, y, r) {
+        ctx.beginPath();
+        ctx.moveTo(x, y - r);
+        ctx.quadraticCurveTo(x + r * 0.2, y - r * 0.2, x + r, y);
+        ctx.quadraticCurveTo(x + r * 0.2, y + r * 0.2, x, y + r);
+        ctx.quadraticCurveTo(x - r * 0.2, y + r * 0.2, x - r, y);
+        ctx.quadraticCurveTo(x - r * 0.2, y - r * 0.2, x, y - r);
+        ctx.fill();
+      }
+
       function pintarCarteles() {
         for (var i = 0; i < carteles.length; i++) {
           var c = carteles[i];
           var y = pantalla(c.y);
-          var f = Math.max(0, 1 - c.t / 1.8);
+          var f = Math.min(1, Math.max(0, (1.8 - c.t) / 0.45));   // se apaga al final
+          var ent = Math.min(1, c.t / 0.26);
+          var esc = 0.5 + 0.5 * (1 - Math.pow(1 - ent, 3))        // el saltito de entrada
+                  + 0.1 * Math.sin(Math.min(1, c.t / 0.55) * Math.PI);
+          var an = 30, al = 10.5, r = al / 2;
+
+          ctx.save();
           ctx.globalAlpha = f;
-          var an = 22, al = 7.5, x0 = (FW - an) / 2;
-          var cinta = ctx.createLinearGradient(0, y - al / 2, 0, y + al / 2);
-          cinta.addColorStop(0, '#E9CD97');
-          cinta.addColorStop(1, '#B9924F');
-          ctx.fillStyle = cinta;
-          caja(ctx, x0, y - al / 2, an, al, 1.2);
-          ctx.fill();
-          ctx.strokeStyle = 'rgba(255,255,255,.7)';
-          ctx.lineWidth = 0.3;
-          ctx.stroke();
-          ctx.fillStyle = '#FFFDF6';
-          ctx.font = '600 4.4px "Segoe UI", system-ui, sans-serif';
+          ctx.translate(FW / 2, y);
+          ctx.scale(esc, esc);
+
+          var chispa = Math.max(0, 1 - c.t / 0.6);
+          if (chispa > 0.01) {
+            var brillo = ctx.createRadialGradient(0, 0, 2, 0, 0, 27);
+            brillo.addColorStop(0, 'rgba(255,236,190,' + (0.6 * chispa).toFixed(2) + ')');
+            brillo.addColorStop(1, 'rgba(255,236,190,0)');
+            ctx.fillStyle = brillo;
+            ctx.beginPath(); ctx.arc(0, 0, 27, 0, TAU); ctx.fill();
+          }
+
+          ctx.fillStyle = 'rgba(74,58,44,.22)';
+          caja(ctx, -an / 2, -al / 2 + 1.1, an, al, r); ctx.fill();
+
+          var oro = ctx.createLinearGradient(0, -al / 2, 0, al / 2);
+          oro.addColorStop(0,    '#F8E8C0');
+          oro.addColorStop(0.46, '#E0BF80');
+          oro.addColorStop(0.54, '#C59D55');
+          oro.addColorStop(1,    '#A07A39');
+          ctx.fillStyle = oro;
+          caja(ctx, -an / 2, -al / 2, an, al, r); ctx.fill();
+
+          ctx.fillStyle = 'rgba(255,255,255,.34)';               // brillo de arriba
+          caja(ctx, -an / 2 + 1, -al / 2 + 0.9, an - 2, al * 0.32, al * 0.16); ctx.fill();
+
+          ctx.strokeStyle = 'rgba(255,253,246,.92)';             // filo claro
+          ctx.lineWidth = 0.42;
+          caja(ctx, -an / 2, -al / 2, an, al, r); ctx.stroke();
+
+          ctx.fillStyle = 'rgba(255,253,246,.95)';
+          estrellita(-an / 2 + 3.7, -0.1, 1.5);
+          estrellita(an / 2 - 3.7, -0.1, 1.5);
+
+          ctx.fillStyle = '#4A3520';
+          ctx.font = '700 6.2px "Segoe UI", system-ui, sans-serif';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.fillText(c.texto, FW / 2, y + 0.2);
+          ctx.fillText(c.texto, 0, 0.4);
+
+          ctx.restore();
         }
         ctx.globalAlpha = 1;
       }
 
-      /** El emblema del logo, con su halo. */
+      /** La doctora, de cuerpo entero y con su halo. */
       function pintarJugador() {
         var y = pantalla(jugador.y);
         figura(jugador.x, y);
@@ -1173,54 +1208,45 @@
         if (jugador.x > FW - RADIO * 2) figura(jugador.x - FW - RADIO * 2, y);
       }
 
+      /* Va de pie: el choque sigue siendo el circulo de siempre, pero el
+         dibujo se apoya en los pies (y + RADIO en pantalla) y crece hacia
+         arriba, asi al caer sobre una plataforma se planta encima de ella
+         en vez de quedar hundida. */
       function figura(x, y) {
-        var estira = 1 + jugador.aplaste * 0.22;
-        var ancho = 1 - jugador.aplaste * 0.22;
+        var al = ALTO_DRA, an = ancho('cuerpo', al);
+        var estira = 1 + jugador.aplaste * 0.18;
+        var encoge = 1 - jugador.aplaste * 0.18;
+        /* el ladeo del rebote es para una pelota: a una persona se le queda
+           en un gesto, no en una voltereta */
+        var ladeo = Math.max(-0.3, Math.min(0.3, jugador.giro * 0.45));
 
-        var halo = ctx.createRadialGradient(x, y, RADIO * 0.7, x, y, RADIO * 2.2);
-        halo.addColorStop(0, 'rgba(255,224,160,.45)');
+        var halo = ctx.createRadialGradient(x, y - al * 0.25, al * 0.18, x, y - al * 0.25, al * 0.62);
+        halo.addColorStop(0, 'rgba(255,224,160,.42)');
         halo.addColorStop(1, 'rgba(255,224,160,0)');
         ctx.fillStyle = halo;
         ctx.beginPath();
-        ctx.arc(x, y, RADIO * 2.2, 0, TAU);
+        ctx.arc(x, y - al * 0.25, al * 0.62, 0, TAU);
         ctx.fill();
 
         ctx.save();
-        ctx.translate(x, y);
-        ctx.rotate(jugador.giro);
-        ctx.scale(ancho, estira);
+        ctx.translate(x, y + RADIO);            // los pies
+        ctx.rotate(ladeo);
+        ctx.scale(encoge, estira);
 
         ctx.fillStyle = 'rgba(40,30,15,.18)';
         ctx.beginPath();
-        ctx.ellipse(0, RADIO * 0.9, RADIO * 0.8, RADIO * 0.28, 0, 0, TAU);
+        ctx.ellipse(0, 0, an * 0.62, an * 0.17, 0, 0, TAU);
         ctx.fill();
 
-        ctx.fillStyle = '#FFFDF8';
-        ctx.beginPath();
-        ctx.arc(0, 0, RADIO, 0, TAU);
-        ctx.fill();
-
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(0, 0, RADIO - 0.2, 0, TAU);
-        ctx.clip();
-        if (logoListo && recorte) {
-          var d = (RADIO - 0.2) * 2;
-          ctx.drawImage(logo, recorte.x, recorte.y, recorte.w, recorte.h, -d / 2, -d / 2, d, d);
+        if (lista('cuerpo')) {
+          imagen(ctx, 'cuerpo', -an / 2, -al, an, al);
         } else {
-          var oro = ctx.createLinearGradient(-RADIO, -RADIO, RADIO, RADIO);
+          var oro = ctx.createLinearGradient(0, -al, 0, 0);
           oro.addColorStop(0, '#E3C593');
           oro.addColorStop(1, '#8B6A38');
           ctx.fillStyle = oro;
-          ctx.fillRect(-RADIO, -RADIO, RADIO * 2, RADIO * 2);
+          ctx.fillRect(-an / 2, -al, an, al);
         }
-        ctx.restore();
-
-        ctx.strokeStyle = 'rgba(139,106,56,.55)';
-        ctx.lineWidth = 0.4;
-        ctx.beginPath();
-        ctx.arc(0, 0, RADIO - 0.2, 0, TAU);
-        ctx.stroke();
         ctx.restore();
       }
 
@@ -1290,6 +1316,7 @@
       /* Minuto y medio de partida. */
       cuenta = api.cuenta(LIMITE, function () { acabar(true); });
 
+      cargar(function () {});                      // las fotos se pintan en cuanto llegan
       medir();
       api.luego(medir, 450);
       sembrarEstrellas();

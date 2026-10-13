@@ -1,129 +1,206 @@
 /* ==========================================================================
-   JUEGO 2 - TRIVIA DE BIENESTAR: 10 preguntas con opcion multiple
+   JUEGO 2 - TRIVIA DE BIENESTAR: preguntas con opcion multiple
+   Viste el tema clinica con las piezas de assets/img/trivia: la escena de
+   spa de fondo, los iconos de pregunta, estrella y cerebro, las letras de
+   las opciones, la tarjeta "Tu bienestar nos importa", la frase en letra
+   inglesa y las hojas (ver herramientas/preparar-assets-trivia.py).
    ========================================================================== */
 
 (function () {
   'use strict';
 
+  /* Preguntas de la clinica pensadas para cualquier cliente: sencillas,
+     sin palabras tecnicas y con opciones falsas que se notan. */
   var BANCO = [
-    { p: '¿Cuál es el órgano más grande del cuerpo humano?',
-      o: ['El hígado', 'La piel', 'Los pulmones', 'El corazón'], r: 1,
-      d: 'La piel de un adulto mide cerca de 2 m² y pesa unos 4 kg.' },
+    { p: '¿Para qué sirve la toxina botulínica (bótox)?',
+      o: ['Para suavizar las arrugas de expresión', 'Para bajar de peso', 'Para teñir el pelo', 'Para curar caries'], r: 0,
+      d: 'Relaja el músculo que forma la arruga y la línea se suaviza.' },
 
-    { p: '¿Cada cuánto conviene reaplicar el protector solar si estás al aire libre?',
-      o: ['Cada 2 horas', 'Una vez al día', 'Cada 8 horas', 'Solo al mediodía'], r: 0,
+    { p: '¿En qué zona de la cara se aplica más el bótox?',
+      o: ['En la frente y alrededor de los ojos', 'En los pies', 'En las rodillas', 'En la espalda'], r: 0,
+      d: 'Son las arrugas que aparecen al gesticular.' },
+
+    { p: '¿Cuánto dura más o menos el efecto del bótox?',
+      o: ['Unos meses', 'Para siempre', 'Un día', 'Una hora'], r: 0,
+      d: 'Suele durar de 3 a 6 meses; luego se repite.' },
+
+    { p: '¿Para qué sirven los rellenos o fillers?',
+      o: ['Para dar volumen a labios, pómulos o mentón', 'Para quitar el vello', 'Para limpiar los dientes', 'Para cortar el pelo'], r: 0,
+      d: 'Devuelven el volumen que se pierde con los años.' },
+
+    { p: '¿Qué parte de la cara se trata más con rellenos?',
+      o: ['Labios y pómulos', 'Uñas', 'Dientes', 'Cabello'], r: 0,
+      d: 'También el mentón, la mandíbula y las ojeras.' },
+
+    { p: '¿Qué se usa más para rellenar los labios?',
+      o: ['Ácido hialurónico', 'Silicona de cocina', 'Agua con sal', 'Azúcar'], r: 0,
+      d: 'Es una sustancia que el propio cuerpo fabrica.' },
+
+    { p: '¿El ácido hialurónico quema la piel?',
+      o: ['No, la hidrata', 'Sí, la quema', 'La tiñe de color', 'La arruga'], r: 0,
+      d: 'A pesar de su nombre, retiene agua y da hidratación.' },
+
+    { p: '¿Qué es el colágeno?',
+      o: ['Lo que le da firmeza a la piel', 'Un tipo de azúcar', 'Un perfume', 'Un maquillaje'], r: 0,
+      d: 'Es una proteína que mantiene la piel firme y elástica.' },
+
+    { p: '¿Qué le pasa al colágeno con los años?',
+      o: ['Va disminuyendo', 'Aumenta sin parar', 'Cambia de color', 'Nada'], r: 0,
+      d: 'Por eso aparecen la flacidez y las arrugas.' },
+
+    { p: '¿Qué es lo que más envejece la piel?',
+      o: ['El sol sin protección', 'Dormir bien', 'Tomar agua', 'Sonreír'], r: 0,
+      d: 'Por eso el protector solar es el mejor antiedad.' },
+
+    { p: '¿Cada cuánto hay que volver a ponerse protector solar al aire libre?',
+      o: ['Cada 2 horas', 'Una vez al año', 'Nunca', 'Una vez por semana'], r: 0,
       d: 'También después de nadar o sudar mucho.' },
 
-    { p: '¿Qué vitamina produce el cuerpo al exponerse al sol?',
-      o: ['Vitamina C', 'Vitamina B12', 'Vitamina D', 'Vitamina K'], r: 2,
-      d: 'Con pocos minutos al día suele bastar; el resto del tiempo, protección.' },
+    { p: '¿Hay que usar protector solar en los días nublados?',
+      o: ['Sí, siempre', 'No, nunca', 'Solo en la playa', 'Solo de noche'], r: 0,
+      d: 'Los rayos del sol atraviesan las nubes.' },
 
-    { p: '¿Cuántos minutos de actividad física moderada recomienda la OMS por semana?',
-      o: ['30 minutos', '60 minutos', '150 minutos', '400 minutos'], r: 2,
-      d: 'Son unos 20-30 minutos al día. Caminar cuenta.' },
+    { p: '¿Qué producto se usa a diario para proteger la piel del sol?',
+      o: ['Protector solar', 'Perfume', 'Champú', 'Desodorante'], r: 0,
+      d: 'Todos los días, en la cara, el cuello y las manos.' },
 
-    { p: '¿Qué proteína le da firmeza y elasticidad a la piel?',
-      o: ['Colágeno', 'Queratina', 'Insulina', 'Hemoglobina'], r: 0,
-      d: 'Su producción baja con los años; por eso la piel pierde firmeza.' },
+    { p: '¿Qué hace un peeling?',
+      o: ['Renueva la piel y mejora las manchas', 'Rellena los labios', 'Pinta las uñas', 'Corta el pelo'], r: 0,
+      d: 'Deja la piel más lisa y luminosa.' },
 
-    { p: '¿Cuántas horas de sueño se recomiendan para un adulto?',
-      o: ['4 a 5 horas', '7 a 9 horas', '10 a 12 horas', 'Da igual'], r: 1,
-      d: 'Dormir bien mejora el ánimo, la memoria y el aspecto de la piel.' },
+    { p: '¿Qué tratamiento ayuda con las manchas de la piel?',
+      o: ['Un peeling', 'Un corte de pelo', 'Un masaje de pies', 'Una manicura'], r: 0,
+      d: 'Después, protector solar siempre.' },
 
-    { p: '¿Con qué temperatura de agua es mejor lavarse la cara?',
-      o: ['Muy caliente', 'Tibia', 'Con hielo', 'Solo con toallitas'], r: 1,
-      d: 'El agua muy caliente reseca y puede irritar la piel.' },
+    { p: '¿Qué tratamiento ayuda a tonificar el abdomen sin hacer ejercicio?',
+      o: ['Emsculpt', 'Un tinte', 'Una limpieza dental', 'Una manicura'], r: 0,
+      d: 'El equipo contrae el músculo por ti mientras estás tumbado.' },
 
-    { p: '¿Qué significa el número del FPS en un protector solar?',
-      o: ['Los mililitros del envase', 'El nivel de protección frente al sol',
-          'Las horas que dura', 'El precio del producto'], r: 1,
-      d: 'Un FPS 30 o más es lo habitual para el uso diario.' },
+    { p: '¿En qué parte del cuerpo se aplica Emsculpt?',
+      o: ['En el abdomen o los glúteos', 'En los ojos', 'En los dientes', 'En el pelo'], r: 0,
+      d: 'Tonifica el músculo y define la figura.' },
 
-    { p: '¿Cuál de estos hábitos envejece más rápido la piel?',
-      o: ['Caminar', 'Fumar', 'Leer', 'Tomar agua'], r: 1,
-      d: 'El tabaco reduce el oxígeno que llega a la piel y favorece las arrugas.' },
+    { p: '¿Qué tratamiento tensa la piel con ultrasonido, sin cirugía?',
+      o: ['HIFU', 'Una manicura', 'La depilación con cera', 'Un tatuaje'], r: 0,
+      d: 'Levanta y reafirma sin cortes.' },
 
-    { p: '¿Qué fruta es especialmente rica en vitamina C?',
-      o: ['Kiwi', 'Plátano', 'Pera', 'Sandía'], r: 0,
-      d: 'La vitamina C participa en la formación de colágeno.' },
+    { p: '¿Qué tratamiento corporal reafirma la piel con radiofrecuencia?',
+      o: ['Exilis', 'Un tinte', 'Un corte de pelo', 'Una manicura'], r: 0,
+      d: 'El calor suave estimula el colágeno.' },
 
-    { p: '¿Para qué sirve la exfoliación de la piel?',
-      o: ['Para broncearse', 'Para eliminar células muertas',
-          'Para blanquear la piel', 'Para cerrar heridas'], r: 1,
-      d: 'Hacerla con suavidad y sin excederse: 1 o 2 veces por semana.' },
+    { p: '¿Qué tratamiento limpia e hidrata la cara con un chorro de aire, sin agujas?',
+      o: ['JetPeel', 'Una cirugía', 'Un tatuaje', 'Un piercing'], r: 0,
+      d: 'Deja la piel fresca y luminosa al momento.' },
 
-    { p: '¿Cuántos litros de agua al día se suelen recomendar para un adulto?',
-      o: ['Medio litro', 'Alrededor de 2 litros', '5 litros', '10 litros'], r: 1,
-      d: 'Varía según la persona, el clima y la actividad física.' },
+    { p: '¿Duele mucho el JetPeel?',
+      o: ['No, no usa agujas', 'Muchísimo', 'Hay que dormir al paciente', 'Hay que operar'], r: 0,
+      d: 'Se siente como una brisa fresca sobre la piel.' },
 
-    { p: '¿Qué parte del cuerpo se olvida más al poner protector solar?',
-      o: ['Las orejas y el cuello', 'La frente', 'Las mejillas', 'La nariz'], r: 0,
-      d: 'Orejas, cuello, escote y el dorso de las manos son los grandes olvidados.' },
+    { p: '¿Qué se usa en el tratamiento de plasma rico en plaquetas?',
+      o: ['Tu propia sangre', 'Agua de mar', 'Leche', 'Barro'], r: 0,
+      d: 'Se separa la parte de la sangre que ayuda a regenerar la piel.' },
 
-    { p: '¿Cuál es el músculo más fuerte del cuerpo en proporción a su tamaño?',
-      o: ['El bíceps', 'El masetero (mandíbula)', 'El gemelo', 'El corazón'], r: 1,
-      d: 'Es el músculo que usas para masticar.' },
+    { p: '¿Qué es la celulitis?',
+      o: ['La piel de naranja en muslos y glúteos', 'Una vitamina', 'Un champú', 'Un ejercicio'], r: 0,
+      d: 'Es muy común, también en personas delgadas.' },
 
-    { p: '¿Qué ayuda a mejorar la circulación en las piernas?',
-      o: ['Estar sentado sin moverse', 'Caminar y elevar las piernas',
-          'Usar ropa muy ajustada', 'Cruzar las piernas mucho tiempo'], r: 1,
-      d: 'Levantarse cada hora ya hace una gran diferencia.' },
+    { p: '¿Qué tratamiento ayuda con la celulitis con un masaje de rodillos?',
+      o: ['La endermología', 'Un tinte de pelo', 'Una limpieza dental', 'La ortodoncia'], r: 0,
+      d: 'Masajea, reafirma y mejora el aspecto de la piel.' },
 
-    { p: '¿Cada cuánto se renueva por completo la capa superficial de la piel?',
-      o: ['Cada 24 horas', 'Cada 3 o 4 semanas', 'Cada 6 meses', 'Nunca'], r: 1,
-      d: 'Por eso los cambios en la piel tardan semanas en notarse.' },
+    { p: '¿Qué son las patas de gallo?',
+      o: ['Las arrugas al lado de los ojos', 'Un plato de comida', 'Un tatuaje', 'Un tipo de uña'], r: 0,
+      d: 'Aparecen al sonreír y se suavizan con bótox.' },
 
-    { p: '¿Qué bebida hidrata mejor durante el día?',
-      o: ['Agua', 'Refresco', 'Café', 'Bebidas energéticas'], r: 0,
-      d: 'El agua sigue siendo la mejor opción, sin azúcar ni calorías.' },
+    { p: '¿Qué son las líneas de expresión?',
+      o: ['Arrugas que salen al gesticular', 'Tatuajes', 'Cicatrices', 'Lunares'], r: 0,
+      d: 'Salen al repetir gestos como fruncir el ceño o sonreír.' },
 
-    { p: '¿Qué es el estrés oxidativo?',
-      o: ['Una dieta', 'Un daño celular que acelera el envejecimiento',
-          'Un tipo de masaje', 'Una vitamina'], r: 1,
-      d: 'Los antioxidantes de frutas y verduras ayudan a contrarrestarlo.' },
+    { p: '¿Para qué sirve una mesoterapia facial?',
+      o: ['Para nutrir e hidratar la piel', 'Para blanquear los dientes', 'Para cortar el pelo', 'Para bajar la fiebre'], r: 0,
+      d: 'Son pequeñas inyecciones de vitaminas en la piel.' },
 
-    { p: '¿Cuántos huesos tiene aproximadamente un adulto?',
-      o: ['106', '206', '306', '406'], r: 1,
-      d: 'Un bebé nace con cerca de 300; algunos se fusionan al crecer.' },
+    { p: '¿Qué tratamiento hidrata la piel desde dentro con pequeñas inyecciones?',
+      o: ['Un skinbooster', 'Un tinte', 'Un masaje de pies', 'Una depilación'], r: 0,
+      d: 'Deja la piel más luminosa y elástica.' },
 
-    { p: '¿Qué conviene hacer antes de una sesión de depilación láser?',
-      o: ['Broncearse mucho', 'Evitar la exposición solar',
-          'Depilarse con cera', 'Aplicar perfume'], r: 1,
-      d: 'La piel bronceada o irritada puede obligar a posponer la sesión.' }
+    { p: '¿Qué tratamiento ayuda a mejorar las cicatrices de acné?',
+      o: ['Las microagujas', 'Un champú', 'Una pedicura', 'Un tinte'], r: 0,
+      d: 'Estimulan la piel para que se renueve.' },
+
+    { p: '¿Qué es la papada?',
+      o: ['La grasa o piel bajo el mentón', 'Un tipo de pelo', 'Una mancha en la mano', 'Una uña'], r: 0,
+      d: 'Puede aparecer por genética, peso o flacidez.' },
+
+    { p: '¿Se puede tratar la papada sin cirugía?',
+      o: ['Sí, con equipos como el HIFU', 'No, nunca', 'Solo con dieta', 'Solo con cremas'], r: 0,
+      d: 'El médico elige la mejor opción para cada caso.' },
+
+    { p: '¿Quién debe aplicar los tratamientos con inyecciones?',
+      o: ['Un médico especialista', 'Cualquier persona', 'Un amigo', 'Uno mismo en casa'], r: 0,
+      d: 'Por seguridad, siempre en una clínica y con un profesional.' },
+
+    { p: '¿Qué conviene hacer antes de cualquier tratamiento?',
+      o: ['Una evaluación con el médico', 'Nada', 'Broncearse mucho', 'No comer en tres días'], r: 0,
+      d: 'Así se elige el tratamiento adecuado para ti.' },
+
+    { p: '¿Qué hay que hacer después de un tratamiento facial?',
+      o: ['Seguir las indicaciones y usar protector', 'Tomar sol enseguida', 'Frotarse la cara fuerte', 'Nada'], r: 0,
+      d: 'Así los resultados son mejores y duran más.' },
+
+    { p: '¿Qué conviene evitar antes de un tratamiento con calor?',
+      o: ['Quemarse con el sol', 'Dormir', 'Tomar agua', 'Desayunar'], r: 0,
+      d: 'Con la piel quemada hay que esperar a que se recupere.' },
+
+    { p: '¿Qué ayuda a que los resultados de un tratamiento duren más?',
+      o: ['Cuidarse del sol e hidratarse', 'Fumar', 'Dormir poco', 'Tomar sol sin protector'], r: 0,
+      d: 'Los buenos hábitos alargan los resultados.' },
+
+    { p: '¿Qué hábito ayuda a tener una piel bonita?',
+      o: ['Dormir bien y tomar agua', 'Fumar', 'Trasnochar', 'Tomar sol sin protección'], r: 0,
+      d: 'La piel refleja cómo te cuidas.' },
+
+    { p: '¿Qué vitamina ayuda a dar luminosidad a la piel?',
+      o: ['La vitamina C', 'La sal', 'El azúcar', 'El café'], r: 0,
+      d: 'Se usa mucho en sérums por la mañana.' },
+
+    { p: '¿Los tratamientos estéticos son solo para mujeres?',
+      o: ['No, también para hombres', 'Sí, solo para mujeres', 'Solo para niños', 'Solo para mayores de 80'], r: 0,
+      d: 'Cada vez más hombres se hacen bótox, HIFU o Emsculpt.' },
+
+    { p: '¿Qué zonas también conviene cuidar además de la cara?',
+      o: ['El cuello y las manos', 'Solo las uñas', 'Solo el pelo', 'Ninguna'], r: 0,
+      d: 'También muestran la edad y agradecen el protector.' }
   ];
 
-  /* Dificultad alta: 8 preguntas en minuto y medio, hay que ir rapido. */
+  /* Dificultad alta: 8 preguntas en 35 segundos, hay que ir rapido. */
   var TOTAL = 8;
-  var OBJETIVO = 6;                   // aciertos para llevarse el premio
+  var OBJETIVO = 4;                   // aciertos para llevarse el premio
 
-  /* Dibujos sueltos del tema clinica (SVG, para que se vean nitidos). */
-  var ICO_PREGUNTA = '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="12" fill="#5AA2E8"/>' +
-    '<path d="M9.2 9.3a2.9 2.9 0 1 1 3.9 2.7c-.8.3-1.1.9-1.1 1.7v.4" stroke="#fff" stroke-width="2" ' +
-    'stroke-linecap="round" fill="none"/><circle cx="12" cy="17.4" r="1.3" fill="#fff"/></svg>';
+  /* Piezas del tema: fotos de assets/img/trivia. */
+  var RUTA = 'assets/img/trivia/';
+  function foto(archivo, clase) {
+    return '<img src="' + RUTA + archivo + '" alt="" aria-hidden="true"' +
+           (clase ? ' class="' + clase + '"' : '') + '>';
+  }
+  var ICO_PREGUNTA = foto('icono-pregunta.png');
+  var ICO_ESTRELLA = foto('icono-estrella.png');
+  var ICO_CEREBRO  = foto('icono-cerebro.png');
 
-  var ICO_ESTRELLA = '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="12" fill="#A78BFA"/>' +
-    '<path d="m12 5.8 1.9 3.9 4.3.6-3.1 3 .7 4.3-3.8-2-3.8 2 .7-4.3-3.1-3 4.3-.6z" fill="#fff"/></svg>';
-
-  var ICO_CEREBRO = '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="12" fill="#3B82D6"/>' +
-    '<path d="M9.6 6.4a2.3 2.3 0 0 0-2.3 2.3 2.2 2.2 0 0 0-.9 4 2.3 2.3 0 0 0 2.2 2.9h1v2.1h2V6.9a1.5 1.5 0 0 0-2-.5z" fill="#fff"/>' +
-    '<path d="M14.4 6.4a2.3 2.3 0 0 1 2.3 2.3 2.2 2.2 0 0 1 .9 4 2.3 2.3 0 0 1-2.2 2.9h-1v2.1h-1.4" stroke="#fff" ' +
-    'stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>';
-
-  /* Fondo: hojas, cartel de la clinica y burbujas suaves. */
+  /* Fondo: la rama y las hojas, la tarjeta de bienestar, la frase en letra
+     inglesa y el bloque de texto. */
   var DECORADO =
-    '<svg class="deco-hojas" viewBox="0 0 120 200" fill="none" aria-hidden="true">' +
-      '<path d="M8 30c22 6 34 24 36 48-24 2-40-14-36-48z" fill="#86C9A8" opacity=".55"/>' +
-      '<path d="M2 62c20 10 28 30 26 52-22-2-34-22-26-52z" fill="#5FB48C" opacity=".5"/>' +
-      '<path d="M18 10c14 12 16 30 10 46-16-8-20-28-10-46z" fill="#A5DCC0" opacity=".5"/>' +
-    '</svg>' +
-    '<div class="deco-cartel"><span class="deco-cruz">✚</span>Tu bienestar<br>nos importa<span class="deco-corazon">♥</span></div>' +
-    '<span class="deco-burbuja b1"></span><span class="deco-burbuja b2"></span><span class="deco-burbuja b3"></span>';
+    foto('rama.png', 'deco-rama') +
+    foto('hojas.png', 'deco-hojas-sueltas') +
+    foto('bienestar.png', 'deco-bienestar') +
+    foto('habitos.png', 'deco-habitos') +
+    '<p class="deco-lema">Una vida más saludable también se nota por fuera</p>';
 
   App.registrar({
     id: 'trivia',
     nombre: 'Trivia',
     emoji: '❓',
-    desc: 'Preguntas de salud y belleza',
+    desc: '¿Cuánto sabes de nuestros tratamientos?',
     sub: 'Bienestar',
 
     iniciar: function (vista, api) {
@@ -168,6 +245,8 @@
           opciones, explicacion)
       ));
       vista.appendChild(h('div', { class: 'pie-accion' }, siguiente));
+      vista.appendChild(h('p', { class: 'pie-trivia' },
+        h('span', {}, 'Bienestar'), h('i', {}), h('span', {}, 'Conocimiento'), h('i', {}), h('span', {}, 'Una vida más plena')));
 
       pintar();
 
@@ -265,8 +344,8 @@
         acabado = true;
         if (cuenta) cuenta.parar();
         var mensaje;
-        if (aciertos >= 8) { mensaje = '¡Excelente! Sabes muchísimo de bienestar.'; api.sonar('gana'); }
-        else if (aciertos >= 6) { mensaje = '¡Muy bien! Se nota que te cuidas.'; api.sonar('gana'); }
+        if (aciertos >= 8) { mensaje = '¡Excelente! Conoces muy bien nuestros tratamientos.'; api.sonar('gana'); }
+        else if (aciertos >= OBJETIVO) { mensaje = '¡Muy bien! Se nota que te cuidas.'; api.sonar('gana'); }
         else { mensaje = 'Buen intento. Cada partida es una oportunidad para aprender algo nuevo.'; api.sonar('fin'); }
 
         api.fin({

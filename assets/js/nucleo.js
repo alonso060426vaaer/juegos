@@ -114,6 +114,30 @@
     osc.stop(ctx.currentTime + (duracion || 0.18) + 0.03);
   }
 
+  /** Rafaga de ruido filtrado: disparos, golpes, viento. */
+  function ruido(duracion, volumen, freqIni, freqFin) {
+    if (!sonidoActivo) return;
+    var ctx = contexto();
+    if (!ctx) return;
+    var dur = duracion || 0.3;
+    var n = Math.max(1, Math.floor(ctx.sampleRate * dur));
+    var buf = ctx.createBuffer(1, n, ctx.sampleRate);
+    var datos = buf.getChannelData(0);
+    for (var i = 0; i < n; i++) datos[i] = Math.random() * 2 - 1;
+    var fuente = ctx.createBufferSource();
+    fuente.buffer = buf;
+    var filtro = ctx.createBiquadFilter();
+    filtro.type = 'lowpass';
+    filtro.frequency.setValueAtTime(freqIni || 3000, ctx.currentTime);
+    filtro.frequency.exponentialRampToValueAtTime(freqFin || 200, ctx.currentTime + dur);
+    var gan = ctx.createGain();
+    gan.gain.setValueAtTime(volumen || 0.3, ctx.currentTime);
+    gan.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + dur);
+    fuente.connect(filtro); filtro.connect(gan); gan.connect(ctx.destination);
+    fuente.start();
+    fuente.stop(ctx.currentTime + dur + 0.05);
+  }
+
   var EFECTOS = {
     toque:  function () { tono(660, 0.08, 0.10, 'triangle'); },
     voltea: function () { tono(880, 0.10, 0.10, 'triangle'); },
@@ -144,14 +168,16 @@
      --------------------------------------------------------------- */
 
   /* Duracion maxima de una partida, igual en todos los juegos. */
-  global.LIMITE = 60;
+  global.LIMITE = 35;
 
   /* Cada comprobante da derecho a UN juego y a estos intentos. */
   global.INTENTOS = 2;
 
   var juegoElegido = null;      // el juego que escogio este cliente
   var intentosUsados = 0;
+  var premioGanado = null;      // lo que se llevo en CUALQUIERA de sus intentos
   var relojSalida = null;       // vuelta automatica al final del turno
+  var relojModal = null;        // los primeros milisegundos el modal no oye
 
   var catalogo = [];            // juegos registrados
   var limpiarActual = null;     // funcion de limpieza del juego en curso
@@ -175,7 +201,6 @@
     dom.modalPremio = document.getElementById('modal-premio');
     dom.modalSello = document.getElementById('modal-sello');
     dom.modalRepetir = document.getElementById('modal-repetir');
-    dom.modalMenu = document.getElementById('modal-menu');
     dom.atractor = document.getElementById('atractor');
     dom.reloj = document.getElementById('reloj');
     dom.botonPantalla = document.getElementById('btn-pantalla');
@@ -261,6 +286,27 @@
     } catch (e) { /* en file:// algunos navegadores no lo permiten */ }
   }
 
+  /* El arco y la flecha del menu, en SVG: se ven nitidos en la pantalla
+     grande y toman el color de donde estan. */
+  var ARCO_MENU =
+    '<svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">' +
+    '<defs><linearGradient id="arco-a" x1="0" y1="0" x2="1" y2="1">' +
+    '<stop offset="0" stop-color="#E7D6B6"/><stop offset="1" stop-color="#F7F0E3"/>' +
+    '</linearGradient></defs>' +
+    '<g fill="none" stroke="url(#arco-a)" stroke-width="26" opacity=".75">' +
+    '<path d="M-120 620 C 60 260 420 40 900 -40"/>' +
+    '<path d="M1720 300 C 1540 660 1180 880 700 960"/>' +
+    '</g>' +
+    '<g fill="none" stroke="#C9A96E" stroke-opacity=".22" stroke-width="2">' +
+    '<path d="M-120 700 C 80 320 460 90 960 10"/>' +
+    '<path d="M1720 220 C 1520 600 1140 830 640 910"/>' +
+    '</g></svg>';
+
+  var FLECHA_MENU =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" ' +
+    'stroke-linecap="round" stroke-linejoin="round">' +
+    '<path d="M5 12h13"/><path d="M12.5 6l6 6-6 6"/></svg>';
+
   function irMenu() {
     desmontar();
     juegoActual = null;
@@ -274,24 +320,37 @@
         'aria-label': juego.nombre + '. ' + juego.desc,
         onclick: function () { sonar('toque'); abrir(juego.id); }
       },
-        h('span', { class: 'emoji', 'aria-hidden': 'true' }, juego.emoji),
+        h('span', { class: 'medalla', 'aria-hidden': 'true' },
+          h('span', { class: 'emoji' }, juego.emoji)),
         h('span', { class: 'nombre' }, juego.nombre),
-        h('span', { class: 'desc' }, juego.desc)
+        h('span', { class: 'desc' }, juego.desc),
+        h('span', { class: 'tarjeta-ir', 'aria-hidden': 'true', html: FLECHA_MENU })
       );
       return tarjeta;
     });
 
     var vista = h('section', { class: 'vista menu' },
+      h('div', { class: 'menu-arco', 'aria-hidden': 'true', html: ARCO_MENU }),
+      h('p', { class: 'menu-margen izq', 'aria-hidden': 'true' },
+        'Belleza también es disfrutar'),
+      h('p', { class: 'menu-margen der', 'aria-hidden': 'true' },
+        'Cuida tu belleza en cada detalle'),
       h('div', { class: 'menu-cabecera' },
         h('img', { src: 'assets/img/logo.png', alt: 'Joana Bernedo Body Aesthetics' }),
         h('h1', {}, 'Zona de Juegos'),
         h('p', { class: 'lema' }, 'Mientras esperas, entretente'),
-        h('hr', { class: 'filete' })
+        h('p', { class: 'filete-corazon', 'aria-hidden': 'true' }, '\u2665'),
+        h('p', { class: 'menu-invita' },
+          h('span', {}, 'Elige un juego y disfruta un momento para ti'),
+          global.Acceso
+            ? h('span', { class: 'menu-intentos' }, global.INTENTOS + ' intentos')
+            : null)
       ),
       h('div', { class: 'tarjetas' }, tarjetas),
-      h('p', { class: 'menu-pie' }, global.Acceso
-        ? 'Elige un juego: tienes ' + global.INTENTOS + ' intentos'
-        : 'Elige un juego para comenzar')
+      h('p', { class: 'menu-pie' },
+        h('i', { 'aria-hidden': 'true' }),
+        h('span', {}, 'Pequeños momentos, gran bienestar'),
+        h('i', { 'aria-hidden': 'true' }))
     );
 
     pintar(vista);
@@ -300,12 +359,23 @@
 
   /* ------------------------- Abrir un juego ------------------------- */
 
+  var ultimoAbrir = 0;
+
   function abrir(id) {
     var juego = null;
     for (var i = 0; i < catalogo.length; i++) {
       if (catalogo[i].id === id) { juego = catalogo[i]; break; }
     }
     if (!juego) return irMenu();
+
+    /* Dos toques seguidos en la misma tarjeta gastaban DOS intentos de
+       golpe, y el cliente se quedaba sin turno antes de jugar. En el totem
+       pasa constantemente: la pantalla tarda en responder, se vuelve a
+       tocar y ya van dos. Nadie abre un juego dos veces en medio segundo
+       a proposito, asi que el segundo toque se ignora. */
+    var ahora = Date.now();
+    if (ahora - ultimoAbrir < 700) return;
+    ultimoAbrir = ahora;
 
     /* Un comprobante, un juego: si intenta otro, se le devuelve al suyo. */
     if (juegoElegido && juegoElegido !== juego.id) return;
@@ -318,6 +388,10 @@
     marcarEnlace(juego.id);
 
     dom.barra.hidden = false;
+    /* Con comprobante no hay salida a medias: se juega hasta el final y
+       se termina en los sobres o en la despedida. La flecha solo se ve sin
+       comprobante. */
+    dom.volver.style.visibility = global.Acceso ? 'hidden' : '';
     dom.titulo.textContent = juego.nombre;
     dom.sub.textContent = juego.sub || '';
 
@@ -351,6 +425,7 @@
     juegoActual = null;
     juegoElegido = null;
     intentosUsados = 0;
+    premioGanado = null;
     marcarEnlace(null);
     dom.barra.hidden = true;
     pintarIntentos();
@@ -503,50 +578,239 @@
 
   /* ------------------------- Modal ------------------------- */
 
+  /* Iconos de trazo fino para las tarjetas de datos del final. Cada dato
+     coge el suyo por la etiqueta; si no hay uno propio, sale la estrella. */
+  var TRAZO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" ' +
+              'stroke-linecap="round" stroke-linejoin="round">';
+  var ICONOS = {
+    personas: TRAZO + '<circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c0-3.2 2.5-5.4 5.5-5.4s5.5 2.2 5.5 5.4"/>' +
+              '<circle cx="16.6" cy="9.4" r="2.6"/><path d="M15.4 14c3 .1 5.1 2.1 5.1 5"/></svg>',
+    diana:    TRAZO + '<circle cx="11" cy="13" r="7.5"/><circle cx="11" cy="13" r="4.2"/><circle cx="11" cy="13" r="1.2"/>' +
+              '<path d="M11 13l8.5-8.5"/><path d="M16.8 4.2l2.7.3.3 2.7"/></svg>',
+    trofeo:   TRAZO + '<path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5a3 3 0 0 0 3 4"/><path d="M16 6h3a3 3 0 0 1-3 4"/>' +
+              '<path d="M12 13v3.5"/><path d="M8.5 20h7"/><path d="M9.5 16.5h5V20h-5z"/></svg>',
+    reloj:    TRAZO + '<circle cx="12" cy="13" r="7.5"/><path d="M12 9v4l2.6 1.8"/><path d="M9.5 3h5"/></svg>',
+    nivel:    TRAZO + '<path d="M4 20h16"/><path d="M6 20v-5h3v5"/><path d="M10.5 20v-9h3v9"/><path d="M15 20V6h3v14"/></svg>',
+    subir:    TRAZO + '<path d="M12 20V5"/><path d="M6.5 10.5L12 5l5.5 5.5"/><path d="M5 20h14"/></svg>',
+    avion:    TRAZO + '<path d="M3 13.5l7-1.5 5-6.5c.8-1 2.4-1 2.8.2.3.8 0 1.6-.6 2.2L13 12l1.5 7-1.8.9-3.1-5.6-4.2 1-1.6 2.2-1.2-.6.6-2.6z"/></svg>',
+    bombilla: TRAZO + '<path d="M9 17h6"/><path d="M10 20.5h4"/><path d="M12 3.5a5.5 5.5 0 0 0-3.2 10c.6.5 1 1.2 1 2V17h4.4v-1.5c0-.8.4-1.5 1-2a5.5 5.5 0 0 0-3.2-10z"/></svg>',
+    cruz:     TRAZO + '<circle cx="12" cy="12" r="8.5"/><path d="M9 9l6 6"/><path d="M15 9l-6 6"/></svg>',
+    globo:    TRAZO + '<path d="M4.5 6.5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v7.5a2 2 0 0 1-2 2H11l-4 3.5V16H6.5a2 2 0 0 1-2-2z"/>' +
+              '<path d="M8.5 10.3l2 2 4-4"/></svg>',
+    billete:  TRAZO + '<rect x="3" y="6.5" width="18" height="11" rx="2"/><circle cx="12" cy="12" r="2.6"/>' +
+              '<path d="M6.5 9.5v5"/><path d="M17.5 9.5v5"/></svg>',
+    estrella: TRAZO + '<path d="M12 3.8l2.5 5.2 5.6.8-4.1 3.9 1 5.6-5-2.7-5 2.7 1-5.6-4.1-3.9 5.6-.8z"/></svg>',
+    otraVez:  TRAZO + '<path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3"/><path d="M4.5 4.5v3.7h3.7"/><path d="M10.5 9.5l4 2.5-4 2.5z"/></svg>',
+    flecha:   TRAZO + '<path d="M4 12h15"/><path d="M13.5 6.5L19 12l-5.5 5.5"/></svg>'
+  };
+  var ICONO_DATO = {
+    'parejas': 'personas', 'intentos': 'diana', 'aciertos': 'diana', 'puntos': 'diana',
+    'puntaje': 'diana', 'récord': 'trofeo', 'tiempo': 'reloj', 'nivel': 'nivel',
+    'metros': 'subir', 'tubos': 'avion', 'pistas': 'bombilla', 'fallos': 'cruz',
+    'frases': 'globo', 'respondidas': 'globo', 'billetes': 'billete'
+  };
+
+  /** Boton con icono a la izquierda, raya, texto y flecha (como en la mockup). */
+  function botonFinal(boton, texto, icono) {
+    boton.innerHTML = '';
+    if (icono) {
+      boton.appendChild(h('span', { class: 'btn-final-icono', 'aria-hidden': 'true', html: ICONOS[icono] }));
+      boton.appendChild(h('span', { class: 'btn-final-raya', 'aria-hidden': 'true' }));
+    }
+    boton.appendChild(h('span', { class: 'btn-final-texto' }, texto));
+    if (icono) boton.appendChild(h('span', { class: 'btn-final-flecha', 'aria-hidden': 'true', html: ICONOS.flecha }));
+  }
+
   function abrirModal(op) {
+    var viejo = dom.modal.querySelector('.modal-caja > .premio-volver');
+    if (viejo) viejo.parentNode.removeChild(viejo);
     dom.modalSello.textContent = op.sello || '✦';
     dom.modalTitulo.textContent = op.titulo || 'Fin del juego';
     dom.modalMensaje.textContent = op.mensaje || '';
     dom.modalDatos.innerHTML = '';
+    dom.modalDatos.className = 'modal-datos datos-' + Math.min((op.datos || []).length, 4);
     (op.datos || []).forEach(function (d) {
+      var icono = ICONOS[ICONO_DATO[String(d.etq).toLowerCase()] || 'estrella'];
       dom.modalDatos.appendChild(
-        h('div', {},
-          h('span', { class: 'val' }, d.val),
-          h('span', { class: 'etq' }, d.etq)
+        h('div', { class: 'dato-final' },
+          h('span', { class: 'dato-final-icono', 'aria-hidden': 'true', html: icono }),
+          h('span', { class: 'dato-final-texto' },
+            h('span', { class: 'val' }, d.val),
+            h('span', { class: 'etq' }, d.etq))
         )
       );
     });
-    /* Premio: solo aparece cuando el juego dice que se cumplio el objetivo */
+    /* ---------------------------------------------------------------
+       EL PREMIO, UNA SOLA VEZ Y AL FINAL
+
+       Los tres sobres salen cuando el cliente ha gastado TODOS sus
+       intentos, no al acabar cada partida: el premio es del comprobante,
+       no de la partida, y saliendo dos veces se llevaria dos.
+
+       Lo que gano en cualquiera de los intentos se guarda, asi que
+       clavarlo en el primero y fallar el segundo no le quita nada. Si no
+       llego a la meta en ninguno, no hay sobres: se le despide con un
+       'buena suerte, nos vemos el proximo ano' y vuelve solo al inicio.
+       --------------------------------------------------------------- */
+    if (op.premio) premioGanado = op.premio;
+
     dom.modalPremio.innerHTML = '';
-    if (op.premio) {
+    var esperandoSobre = false;
+    var quedan = global.Acceso ? (global.INTENTOS - intentosUsados) : 1;
+    /* Su turno acaba al gastar los dos intentos o al GANAR: si llega a la
+       meta no se le hace jugar otra vez, elige su sobre en ese momento. */
+    var acaba = !global.Acceso || quedan <= 0 || !!op.premio;
+    var ultimo = acaba;
+    var elPremio = ultimo ? premioGanado : null;
+    var sinPremio = ultimo && !premioGanado;
+
+    if (elPremio) {
       dom.modalPremio.hidden = false;
-      dom.modalPremio.appendChild(h('span', { class: 'premio-cinta' }, '¡Has ganado!'));
-      dom.modalPremio.appendChild(h('span', { class: 'premio-icono', 'aria-hidden': 'true' }, op.premio.icono));
-      dom.modalPremio.appendChild(h('strong', { class: 'premio-nombre' }, op.premio.nombre));
-      dom.modalPremio.appendChild(h('span', { class: 'premio-nota' }, op.premio.nota));
-      dom.modalPremio.appendChild(h('span', { class: 'premio-pie' }, 'Enséñalo en recepción antes de irte'));
-      dom.modalSello.textContent = '🏆';
-      confeti();
-      sonar('premio');
+      esperandoSobre = true;
+      dom.modalSello.textContent = '🎁';
+      pintarSobres(elPremio, function () {
+        /* ya tiene su premio: la sala se prepara sola para el siguiente */
+        if (acaba && global.Acceso) volverSolo(3);
+      });
     } else {
       dom.modalPremio.hidden = true;
     }
 
-    /* Intentos: si ya gasto los dos, solo puede salir (y se sale solo) */
-    var quedan = global.Acceso ? (global.INTENTOS - intentosUsados) : 1;
-    dom.modalRepetir.hidden = quedan <= 0;
-    dom.modalRepetir.textContent = op.textoRepetir ||
-      (quedan === 1 ? 'Jugar mi último intento' : 'Jugar otra vez');
-    dom.modalMenu.textContent = global.Acceso ? 'Salir' : 'Ver otros juegos';
+    /* Otro intento solo si no gano y aun le queda alguno */
+    dom.modalRepetir.hidden = acaba && !!global.Acceso;
+    botonFinal(dom.modalRepetir, op.textoRepetir ||
+      (quedan === 1 ? 'Jugar mi último intento' : 'Jugar otra vez'), 'otraVez');
+    /* No hay boton de salir: o juega su otro intento, o elige su sobre (o
+       se le despide), y la vuelta al inicio se hace sola. */
+    dom.modal.classList.toggle('con-datos', (op.datos || []).length > 0);
 
     clearTimeout(relojSalida);
-    if (quedan <= 0) {
+    if (sinPremio) {
+      dom.modalTitulo.textContent = '¡Buena suerte!';
+      dom.modalMensaje.textContent = 'Esta vez no se pudo. ¡Nos vemos el próximo año!';
+    } else if (op.premio) {
+      /* gano esta partida: se le felicita, sea el intento que sea */
+      dom.modalTitulo.textContent = '¡Muy bien, lo lograste!';
+      dom.modalMensaje.textContent = '¡Excelente partida! Elige tu sobre.';
+    } else if (quedan <= 0) {
       dom.modalMensaje.textContent = (op.mensaje ? op.mensaje + ' ' : '') +
         'Se acabaron tus ' + global.INTENTOS + ' intentos.';
-      relojSalida = setTimeout(salir, 14000);
     }
+    /* con sobres sin abrir no se cuenta todavia: la cuenta arranca al abrirlo */
+    if (acaba && global.Acceso && !esperandoSobre) volverSolo(3);
+
+    /* Recien abierto no acepta toques: si el cliente venia dando golpes a
+       la pantalla, el ultimo caia sobre un boton del modal y se saltaba el
+       final de la partida sin verlo. */
+    dom.modal.classList.add('recien');
+    clearTimeout(relojModal);
+    relojModal = setTimeout(function () { dom.modal.classList.remove('recien'); }, 450);
 
     dom.modal.hidden = false;
+  }
+
+  /* ---------------------------------------------------------------
+     LOS TRES SOBRES
+
+     El premio ya lo decidio el juego; los sobres son la forma de
+     entregarlo. Se eligen ademas otros dos premios distintos, que se
+     ensenan despues para que se vea que habia mas cosas en juego.
+     --------------------------------------------------------------- */
+  function otrosPremios(ganado, cuantos) {
+    var lista = (global.PREMIOS || []).filter(function (p) {
+      return p.nombre !== ganado.nombre;
+    });
+    return mezclar(lista).slice(0, cuantos);
+  }
+
+  function pintarSobres(ganado, alAbrir) {
+    var caja = dom.modalPremio;
+    var otros = otrosPremios(ganado, 2);
+    var elegido = false;
+
+    caja.classList.add('eligiendo');
+    caja.appendChild(h('span', { class: 'premio-cinta' }, '¡Has ganado un premio!'));
+    caja.appendChild(h('p', { class: 'sobres-pista' }, 'Elige un sobre para descubrirlo'));
+
+    var fila = h('div', { class: 'sobres' });
+    for (var i = 0; i < 3; i++) {
+      (function () {
+        /* capas, de atras hacia delante: el fondo, la tarjeta que asoma al
+           abrir, el bolsillo con su forma de V, la solapa y el lacre JB */
+        var sobre = h('button', { class: 'sobre', 'aria-label': 'Sobre ' + (i + 1) },
+          h('span', { class: 'sobre-fondo', 'aria-hidden': 'true' }),
+          h('span', { class: 'sobre-carta', 'aria-hidden': 'true' }, h('i', {}, '✦')),
+          h('span', { class: 'sobre-bolsillo', 'aria-hidden': 'true' }),
+          h('span', { class: 'sobre-solapa', 'aria-hidden': 'true' }),
+          h('span', { class: 'sobre-sello', 'aria-hidden': 'true' }));
+        sobre.addEventListener('click', function () {
+          if (elegido) return;
+          elegido = true;
+          abrirSobre(fila, sobre, ganado, otros, alAbrir);
+        });
+        fila.appendChild(sobre);
+      })();
+    }
+    caja.appendChild(fila);
+  }
+
+  function abrirSobre(fila, sobre, ganado, otros, alAbrir) {
+    var todos = fila.querySelectorAll('.sobre');
+    for (var i = 0; i < todos.length; i++) {
+      todos[i].disabled = true;
+      if (todos[i] !== sobre) todos[i].classList.add('descartado');
+    }
+    sobre.classList.add('abierto');
+    tono(660, 0.09, 0.10, 'triangle');
+
+    setTimeout(function () {
+      var caja = dom.modalPremio;
+      caja.classList.remove('eligiendo');
+      caja.innerHTML = '';
+      caja.appendChild(h('span', { class: 'premio-cinta' }, '¡Has ganado!'));
+      caja.appendChild(h('span', { class: 'premio-icono', 'aria-hidden': 'true' }, ganado.icono));
+      caja.appendChild(h('strong', { class: 'premio-nombre' }, ganado.nombre));
+      caja.appendChild(h('span', { class: 'premio-nota' }, ganado.nota));
+
+      if (otros.length) {
+        var resto = h('div', { class: 'sobres-resto' }, h('b', {}, 'En los otros sobres había'));
+        otros.forEach(function (p) {
+          resto.appendChild(h('span', { class: 'resto-item' },
+            h('span', { 'aria-hidden': 'true' }, p.icono), p.nombre));
+        });
+        caja.appendChild(resto);
+      }
+      caja.appendChild(h('span', { class: 'premio-pie' }, 'Enséñalo en recepción antes de irte'));
+
+      /* se repite la animacion de entrada de la tarjeta */
+      caja.classList.remove('premio');
+      void caja.offsetWidth;
+      caja.classList.add('premio');
+
+      dom.modalSello.textContent = '🏆';
+      confeti();
+      sonar('premio');
+      if (typeof alAbrir === 'function') alAbrir();
+    }, 900);
+  }
+
+  /** Abierto el sobre, la vuelta al inicio se hace sola: el cliente no
+      tiene que tocar nada mas, y el siguiente se encuentra la pantalla del
+      comprobante. Se ve la cuenta atras para que no parezca que se corta. */
+  function volverSolo(segundos) {
+    clearTimeout(relojSalida);
+    var aviso = h('span', { class: 'premio-volver' }, '');
+    /* sin tarjeta de premio a la vista, el aviso va suelto en el modal */
+    if (dom.modalPremio.hidden) dom.modalDatos.parentNode.insertBefore(aviso, dom.modalDatos.nextSibling);
+    else dom.modalPremio.appendChild(aviso);
+    (function tic() {
+      aviso.textContent = segundos > 0
+        ? 'Volviendo al inicio en ' + segundos + '…'
+        : 'Volviendo al inicio…';
+      if (segundos <= 0) { salir(); return; }
+      segundos--;
+      relojSalida = setTimeout(tic, 1000);
+    })();
   }
 
   function cerrarModal() { dom.modal.hidden = true; }
@@ -589,6 +853,9 @@
     if (global.Acceso) {
       desmontar();
       juegoActual = null;
+      juegoElegido = null;
+      intentosUsados = 0;
+      premioGanado = null;
       dom.barra.hidden = true;
       global.Acceso.olvidar();
       global.Acceso.pedir(irMenu);
@@ -609,7 +876,6 @@
     dom.volver.addEventListener('click', function () { sonar('toque'); salir(); });
     dom.sonido.addEventListener('click', alternarSonido);
     dom.modalRepetir.addEventListener('click', function () { sonar('toque'); reiniciar(); });
-    dom.modalMenu.addEventListener('click', function () { sonar('toque'); salir(); });
     dom.atractor.addEventListener('pointerdown', despertar);
 
     // Cualquier interaccion reinicia el contador de reposo
@@ -644,6 +910,49 @@
     // Evitar menu contextual y zoom por doble toque en el totem
     document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
     document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
+
+    /* ---------------------------------------------------------------
+       EL TOQUE, SIN ESPERAR AL CLICK
+
+       En una laptop el raton responde al instante; en el totem no. Entre
+       que el dedo se levanta y el navegador decide que eso fue un 'click'
+       pasan decenas de milisegundos (a veces mas de cien): tiene que
+       descartar antes que fuera un arrastre o un doble toque. Se nota, y
+       el cliente vuelve a tocar creyendo que no le ha hecho caso.
+
+       Aqui el boton se dispara ya al levantar el dedo, si no se ha movido.
+       El click de verdad llega detras y se descarta, para que la accion no
+       se haga dos veces. Solo aplica al dedo: con raton no hace falta.
+       --------------------------------------------------------------- */
+    var toque = null, tragarClick = false;
+
+    function botonDe(destino) {
+      return destino && destino.closest ? destino.closest('button') : null;
+    }
+
+    document.addEventListener('pointerdown', function (e) {
+      tragarClick = false;
+      if (e.pointerType === 'mouse') { toque = null; return; }
+      var b = botonDe(e.target);
+      toque = b ? { b: b, x: e.clientX, y: e.clientY } : null;
+    }, true);
+
+    document.addEventListener('pointerup', function (e) {
+      var t = toque;
+      toque = null;
+      if (!t || e.pointerType === 'mouse') return;
+      if (botonDe(e.target) !== t.b || t.b.disabled) return;
+      if (Math.abs(e.clientX - t.x) > 14 || Math.abs(e.clientY - t.y) > 14) return;
+      t.b.click();              // este pasa: es el que queremos
+      tragarClick = true;       // el que mande el navegador despues, no
+    }, true);
+
+    document.addEventListener('click', function (e) {
+      if (!tragarClick) return;
+      tragarClick = false;
+      e.stopPropagation();
+      e.preventDefault();
+    }, true);
 
     /* Volver a pantalla completa en cuanto se pueda. Sin esto, en el totem
        quedan a la vista la barra de titulo y las pestanas del navegador: los
@@ -682,8 +991,17 @@
 
   /** Pide pantalla completa si no lo esta ya. Silencioso si el navegador
       la rechaza: se volvera a intentar en el proximo toque. */
+  var ultimaPantalla = 0;
+
   function pantallaCompleta() {
     if (document.fullscreenElement || document.webkitFullscreenElement) return;
+    /* Mientras el navegador esta entrando a pantalla completa, pedirsela otra
+       vez la CANCELA: con toques rapidos la aplicacion se salia sola y
+       aparecian las pestanas del navegador. Se pide como mucho cada segundo
+       y medio, que es de sobra para lo que hace falta. */
+    var ahora = Date.now();
+    if (ahora - ultimaPantalla < 1500) return;
+    ultimaPantalla = ahora;
     var raiz = document.documentElement;
     var pedir = raiz.requestFullscreen || raiz.webkitRequestFullscreen;
     if (!pedir) return;
@@ -708,7 +1026,8 @@
     menu: irMenu,
     abrir: abrir,
     sonar: sonar,
-    tono: tono
+    tono: tono,
+    ruido: ruido
   };
 
 })(window);

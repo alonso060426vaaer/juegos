@@ -1,6 +1,9 @@
 /* ==========================================================================
    JUEGO 7 - ROMPE LADRILLOS (el arcade clasico de toda la vida)
-   La bola es el emblema del logo. Se juega arrastrando el dedo.
+   Version de cristal: el fondo con el rostro, los ladrillos, la paleta y la
+   bola salen de las fotos de assets/img/ladrillos, y el marcador (score,
+   level, lives) va dentro del lienzo, en una barra de cristal.
+   Se juega arrastrando el dedo.
    ========================================================================== */
 
 (function () {
@@ -13,64 +16,104 @@
      --------------------------------------------------------------- */
   var FW = 100;
   var FH = 140;                                        // se ajusta al hueco disponible
-  var FH_MIN = 115, FH_MAX = 145;
+  var FH_MIN = 115, FH_MAX = 190;
+
+  var HUD_ALTO = 14;                                   // barra de cristal de arriba
+  var TECHO    = HUD_ALTO + 2;                         // borde de arriba del campo
+  var LADO     = 2;                                    // bordes laterales del campo
 
   var COLUMNAS = 9;
   var MARGEN   = 5;                                    // borde lateral libre
   var HUECO    = 0.9;                                  // separacion entre ladrillos
   var LAD_W    = (FW - MARGEN * 2 - HUECO * (COLUMNAS - 1)) / COLUMNAS;
   var LAD_H    = 4.6;
-  var LAD_Y0   = 16;                                   // altura de la primera fila
+  var LAD_Y0   = 24;                                   // altura de la primera fila
 
-  var PALA_W = 15, PALA_H = 3.2;
+  var PALA_W = 24, PALA_H = 3.8;                     // la paleta es una jeringa
   var PALA_ALTO = 11;                                  // separacion de la paleta al fondo
   var PALA_Y = FH - PALA_ALTO;
-  var PALA_MIN = 11.5, PALA_ANCHA = 31;
-  var RADIO  = 2.8;                                    // radio de la bola
+  var PALA_MIN = 19, PALA_ANCHA = 38;
+  var RADIO  = 3.3;                                    // radio de la bola (lleva el logo JB)
 
-  /* Dificultad media-alta: la bola sale mas rapida y la paleta es algo
-     mas corta que en la version facil. */
-  var VEL_BASE = 68, VEL_MAX = 118;                    // unidades por segundo
+  /* Dificultad alta: la bola sale rapida y cada nivel y cada golpe de
+     paleta la aceleran mas. La paleta es algo mas corta que en la facil. */
+  var VEL_BASE = 150, VEL_MAX = 240;                   // unidades por segundo
+  var DURA_INICIO = 7;                                 // segundos de bola perforante al arrancar
+  var DURA_REGALO = 6;                                 // y los que da la capsula
   var VIDAS_INICIO = 3, VIDAS_MAX = 5;
-  var OBJETIVO = 900;                                  // puntos para llevarse el premio
+  var OBJETIVO = 550;                                  // puntos para llevarse el premio
   var CAIDA = 27;                                      // velocidad de las capsulas
   var SUERTE = 0.11;                                   // probabilidad de capsula
 
-  /* Filas de arriba (mas dificiles de alcanzar) valen mas puntos. */
+  /* Filas de arriba (mas dificiles de alcanzar) valen mas puntos. Los
+     colores van en ciclo: oro, rojo, turquesa, morado, y vuelta a empezar. */
   var FILAS = [
     { color: '#F0B429', luz: '#FFE08A', osc: '#A9700D', brillo: '255,190,60',  puntos: 90, nota: 880 },
-    { color: '#E8574C', luz: '#FF9A8E', osc: '#96271E', brillo: '255,110,90',  puntos: 75, nota: 784 },
-    { color: '#E8679B', luz: '#FFA8C6', osc: '#A02F5C', brillo: '255,120,175', puntos: 60, nota: 698 },
-    { color: '#7C6BE0', luz: '#B2A6FF', osc: '#443A94', brillo: '150,130,255', puntos: 45, nota: 659 },
-    { color: '#2FB58C', luz: '#7BE3C0', osc: '#166D53', brillo: '70,225,180',  puntos: 30, nota: 587 },
-    { color: '#3E9AE0', luz: '#8ACDF5', osc: '#1C5C92', brillo: '90,190,255',  puntos: 20, nota: 523 }
+    { color: '#E8574C', luz: '#FF9A8E', osc: '#96271E', brillo: '255,110,90',  puntos: 80, nota: 784 },
+    { color: '#4FD1C5', luz: '#A8F0EA', osc: '#1E8C82', brillo: '80,210,200',  puntos: 70, nota: 698 },
+    { color: '#7C6BE0', luz: '#B2A6FF', osc: '#443A94', brillo: '150,130,255', puntos: 60, nota: 659 },
+    { color: '#F0B429', luz: '#FFE08A', osc: '#A9700D', brillo: '255,190,60',  puntos: 50, nota: 587 },
+    { color: '#E8574C', luz: '#FF9A8E', osc: '#96271E', brillo: '255,110,90',  puntos: 40, nota: 523 },
+    { color: '#4FD1C5', luz: '#A8F0EA', osc: '#1E8C82', brillo: '80,210,200',  puntos: 30, nota: 494 },
+    { color: '#7C6BE0', luz: '#B2A6FF', osc: '#443A94', brillo: '150,130,255', puntos: 20, nota: 440 }
   ];
+  /* que foto de ladrillo lleva cada fila */
+  var FOTO_FILA = [1, 2, 3, 4, 1, 2, 3, 4];
 
   var REGALOS = [
     { tipo: 'ancha', letra: 'A', color: '#B9924F', aviso: 'Paleta mas ancha' },
     { tipo: 'lenta', letra: 'L', color: '#4E8C6A', aviso: 'Bola mas lenta' },
-    { tipo: 'vida',  letra: '+', color: '#C0614F', aviso: 'Una vida mas' }
+    { tipo: 'vida',  letra: '+', color: '#C0614F', aviso: 'Una vida mas' },
+    { tipo: 'dura',  letra: 'P', color: '#3FA7E0', aviso: 'Bola perforante: atraviesa todo' }
   ];
 
   /* ---------------------------------------------------------------
-     La bola lleva dentro el emblema del logo. Como logo.png trae
-     ademas el texto debajo, se recorta solo el circulo de arriba.
-     Si algun dia se cambia por un logo ya cuadrado, se usa entero.
+     Imagenes. Se cargan una vez por sesion y se comparten entre partidas.
      --------------------------------------------------------------- */
-  var logo = new Image();
-  var logoListo = false;
-  var recorte = null;
+  var RUTA = 'assets/img/ladrillos/';
+  var ARCHIVOS = {
+    fondo: 'fondo.png',
+    bola: 'bola-marca.png',                            // herramientas/preparar-bola-marca.py
+    corazon: 'corazon.png',
+    guia: 'guia.png',
+    ladrillo1: 'ladrillo-1.png',
+    ladrillo2: 'ladrillo-2.png',
+    ladrillo3: 'ladrillo-3.png',
+    ladrillo4: 'ladrillo-4.png'
+  };
+  var IMG = {};
 
-  logo.addEventListener('load', function () {
-    var an = logo.naturalWidth, al = logo.naturalHeight;
-    if (an / al > 1.15) {
-      recorte = { x: an * 0.30, y: al * 0.145, w: an * 0.40, h: al * 0.48 };
-    } else {
-      recorte = { x: 0, y: 0, w: an, h: al };
-    }
-    logoListo = true;
-  });
-  logo.src = 'assets/img/logo.png';
+  function cargar(alTerminar) {
+    var faltan = 0;
+    function una() { if (--faltan === 0) alTerminar(); }
+    Object.keys(ARCHIVOS).forEach(function (n) {
+      var im = IMG[n];
+      if (!im) {
+        im = new Image();
+        im.src = RUTA + ARCHIVOS[n];
+        IMG[n] = im;
+      }
+      if (im.complete) return;
+      faltan++;
+      im.addEventListener('load', una);
+      im.addEventListener('error', una);
+    });
+    if (faltan === 0) alTerminar();
+  }
+
+  function lista(n) {
+    var im = IMG[n];
+    return !!(im && im.complete && im.naturalWidth > 0);
+  }
+
+  function imagen(g, n, x, y, w, hh) {
+    if (!lista(n)) return;
+    var im = IMG[n];
+    if (hh === undefined || hh === null) hh = w * im.naturalHeight / im.naturalWidth;
+    g.drawImage(im, x, y, w, hh);
+  }
+
+  var FUENTE = '"Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif';
 
   /** Rectangulo con esquinas redondeadas (sin depender de roundRect). */
   function caja(g, x, y, an, al, r) {
@@ -101,6 +144,8 @@
       var sacudida = 0;
       var cuenta = null;
       var tiempo = 0, finAncha = 0, finLenta = 0, lento = 1;
+      var dura = false, finDura = 0, primera = true;   // bola perforante en el primer lanzamiento de cada nivel
+      var duraInicio = false;                          // la del arranque se acaba al primer rebote en la paleta
       var teclaIzq = false, teclaDer = false;
 
       var mejor = 0;
@@ -110,24 +155,16 @@
       var bola = { x: FW / 2, y: PALA_Y - RADIO - 0.6, vx: 0, vy: 0, giro: 0 };
 
       /* ------------------------- Pantalla ------------------------- */
-      var valPuntos = h('span', { class: 'val' }, '0');
-      var valNivel  = h('span', { class: 'val' }, '1');
-      var valVidas  = h('span', { class: 'val vidas' }, '');
-      var aviso = h('p', { class: 'aviso' }, 'Toca la pantalla para lanzar la bola');
+      /* El marcador y los avisos se pintan dentro del lienzo; estos tres
+         solo quedan para que el resto del codigo siga escribiendo en ellos. */
+      var valPuntos = {}, valNivel = {}, valVidas = {};
+      var mensaje = { texto: '', t: 0 };
+      function avisar(t, seg) { mensaje.texto = t; mensaje.t = seg || 2.4; }
 
+      vista.classList.add('ladrillos-vista');
       var lienzo = h('canvas', { class: 'ladrillos' });
-      var zona = h('div', {
-        class: 'ladrillos-zona',
-        estilo: 'flex:1; min-height:0; display:flex; align-items:center;' +
-                ' justify-content:center; overflow:hidden;'
-      }, lienzo);
-
-      vista.appendChild(h('div', { class: 'marcador' },
-        h('div', { class: 'dato' }, valPuntos, h('span', { class: 'etq' }, 'Puntos')),
-        h('div', { class: 'dato' }, valNivel,  h('span', { class: 'etq' }, 'Nivel')),
-        h('div', { class: 'dato' }, valVidas,  h('span', { class: 'etq' }, 'Vidas'))
-      ));
-      vista.appendChild(h('div', { class: 'centro' }, zona, aviso));
+      var zona = h('div', { class: 'ladrillos-zona' }, lienzo);
+      vista.appendChild(zona);
 
       api.sub('Nivel 1' + (mejor ? '  ·  Récord ' + mejor : ''));
 
@@ -159,8 +196,8 @@
             y: Math.random() * (FH + 30),
             r: 4 + Math.random() * 10,
             v: 2 + Math.random() * 5,
-            a: (0.05 + Math.random() * 0.1).toFixed(2),
-            tono: Math.random() < 0.5 ? '255,200,120' : '255,130,190'
+            a: (0.10 + Math.random() * 0.14).toFixed(2),
+            tono: Math.random() < 0.5 ? '255,255,255' : '190,230,255'
           });
         }
         pintarPista2();
@@ -170,7 +207,7 @@
         lienzo.style.width  = Math.round(an) + 'px';
         lienzo.style.height = Math.round(al) + 'px';
 
-        var dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+        var dpr = Math.min(window.devicePixelRatio || 1, 1.5);   // mas no se nota y pesa el doble
         lienzo.width  = Math.round(an * dpr);
         lienzo.height = Math.round(al * dpr);
         escala = (an * dpr) / FW;
@@ -193,9 +230,7 @@
 
       function armar() {
         ladrillos = [];
-        var filas = Math.min(FILAS.length, 3 + nivel);
-        /* filas reforzadas (dos golpes): una desde el principio, dos desde el nivel 3 */
-        var dobles = nivel >= 3 ? 2 : 1;
+        var filas = Math.min(FILAS.length, 5 + nivel);
         for (var f = 0; f < filas; f++) {
           for (var c = 0; c < COLUMNAS; c++) {
             ladrillos.push({
@@ -203,7 +238,8 @@
               y: LAD_Y0 + f * (LAD_H + HUECO),
               w: LAD_W, h: LAD_H,
               def: FILAS[f],
-              vida: f < dobles ? 2 : 1,
+              foto: 'ladrillo' + FOTO_FILA[f],
+              vida: 1,
               vivo: true, chispa: 0, deg: null
             });
           }
@@ -219,7 +255,7 @@
       }
 
       function velocidad() {
-        return Math.min(VEL_MAX, VEL_BASE + (nivel - 1) * 6.5 + golpes * 0.28) * lento;
+        return Math.min(VEL_MAX, VEL_BASE + (nivel - 1) * 14 + golpes * 0.6) * lento;
       }
 
       function lanzar() {
@@ -230,7 +266,28 @@
         bola.vx = Math.cos(ang) * v;
         bola.vy = Math.sin(ang) * v;
         api.sonar('toque');
-        aviso.textContent = 'Arrastra el dedo para mover la paleta';
+        if (primera) {
+          primera = false;
+          endurecer(DURA_INICIO, true);
+          avisar('¡Bola perforante! Atraviesa todo lo que toca', 3);
+        } else {
+          avisar('Arrastra el dedo para mover la paleta');
+        }
+      }
+
+      /** La bola atraviesa los ladrillos (los rompe sin rebotar) durante unos segundos. */
+      function endurecer(segundos, deInicio) {
+        dura = true;
+        duraInicio = !!deInicio;
+        finDura = tiempo + segundos;
+      }
+
+      /** La perforante del arranque dura hasta que la bola vuelve a la paleta:
+          rebota en los muros y sigue perforando; al primer toque de paleta se acaba. */
+      function rebote() {
+        if (!dura || !duraInicio) return;
+        dura = false; duraInicio = false; finDura = 0;
+        avisar('La bola vuelve a rebotar', 1.4);
       }
 
       /* ------------------------- Movimiento ------------------------- */
@@ -238,10 +295,11 @@
 
         if (finAncha && tiempo > finAncha) { finAncha = 0; pala.w = anchoBase(); }
         if (finLenta && tiempo > finLenta) { finLenta = 0; lento = 1; reajustar(); }
+        if (finDura && tiempo > finDura) { finDura = 0; dura = false; duraInicio = false; avisar('La bola vuelve a rebotar', 1.6); }
 
         if (teclaIzq) pala.destino -= 75 * dt;
         if (teclaDer) pala.destino += 75 * dt;
-        pala.destino = Math.max(0, Math.min(FW - pala.w, pala.destino));
+        pala.destino = Math.max(LADO, Math.min(FW - LADO - pala.w, pala.destino));
         pala.x += (pala.destino - pala.x) * Math.min(1, dt * 22);
         if (Math.abs(pala.destino - pala.x) < 0.04) pala.x = pala.destino;
 
@@ -276,9 +334,9 @@
         bola.x += bola.vx * dt;
         bola.y += bola.vy * dt;
 
-        if (bola.x < RADIO)      { bola.x = RADIO;      bola.vx =  Math.abs(bola.vx); muro('izq', bola.y); }
-        if (bola.x > FW - RADIO) { bola.x = FW - RADIO; bola.vx = -Math.abs(bola.vx); muro('der', bola.y); }
-        if (bola.y < RADIO)      { bola.y = RADIO;      bola.vy =  Math.abs(bola.vy); muro('alto', bola.x); }
+        if (bola.x < LADO + RADIO)      { bola.x = LADO + RADIO;      bola.vx =  Math.abs(bola.vx); muro('izq', bola.y); }
+        if (bola.x > FW - LADO - RADIO) { bola.x = FW - LADO - RADIO; bola.vx = -Math.abs(bola.vx); muro('der', bola.y); }
+        if (bola.y < TECHO + RADIO)     { bola.y = TECHO + RADIO;     bola.vy =  Math.abs(bola.vy); muro('alto', bola.x); }
 
         chocarLadrillo();
         chocarPala();
@@ -306,12 +364,13 @@
         bola.vx = Math.sin(ang) * v;
         bola.vy = -Math.cos(ang) * v;
         bola.y = PALA_Y - RADIO - 0.02;
+        rebote();
         App.tono(520 + rel * 60, 0.06, 0.10, 'triangle');
         for (var ch = 0; ch < 7; ch++) {
           trozos.push({
             x: bola.x, y: PALA_Y - 0.4,
             vx: (Math.random() - 0.5) * 26, vy: -6 - Math.random() * 18,
-            vida: 0.4, color: '#FFE7B0'
+            vida: 0.4, color: '#FFFFFF'
           });
         }
       }
@@ -334,6 +393,8 @@
           var cy = Math.max(l.y, Math.min(bola.y, l.y + l.h));
           var dx = bola.x - cx, dy = bola.y - cy;
           if (dx * dx + dy * dy > RADIO * RADIO) continue;
+
+          if (dura) { romper(l); continue; }        // perforante: rompe y sigue de largo
 
           /* Rebota por el lado mas cercano y se separa para no golpear dos veces. */
           if (Math.abs(dx) > Math.abs(dy)) {
@@ -422,11 +483,13 @@
           lento = 0.75;
           finLenta = tiempo + 12;
           reajustar();
+        } else if (def.tipo === 'dura') {
+          endurecer(DURA_REGALO);
         } else {
           if (vidas < VIDAS_MAX) vidas++;
           pintarVidas();
         }
-        aviso.textContent = def.aviso;
+        avisar(def.aviso);
       }
 
       /* ------------------------- Vidas y final ------------------------- */
@@ -438,13 +501,14 @@
         api.sonar('mal');
         regalos = [];
         finAncha = 0; finLenta = 0; lento = 1;
+        finDura = 0; dura = false;
         pala.w = anchoBase();
 
         if (vidas <= 0) { acabar(); return; }
         colocar();
-        aviso.textContent = vidas === 1
+        avisar(vidas === 1
           ? 'Te queda una vida. Toca para lanzar'
-          : 'Te quedan ' + vidas + ' vidas. Toca para lanzar';
+          : 'Te quedan ' + vidas + ' vidas. Toca para lanzar');
       }
 
       function superar() {
@@ -453,7 +517,7 @@
         puntos += 100 * nivel;
         pintarPuntos();
         api.sonar('gana');
-        aviso.textContent = '¡Nivel ' + nivel + ' superado!';
+        avisar('¡Nivel ' + nivel + ' superado!');
 
         api.luego(function () {
           nivel++;
@@ -461,9 +525,10 @@
           api.sub('Nivel ' + nivel + (mejor ? '  ·  Récord ' + mejor : ''));
           pala.w = anchoBase();
           regalos = []; trozos = [];
+          primera = true;                    // cada nivel arranca con la bola perforante
           armar();
           colocar();
-          aviso.textContent = 'Toca la pantalla para lanzar la bola';
+          avisar('Toca la pantalla para lanzar la bola');
           jugando = true;
         }, 1500);
       }
@@ -473,7 +538,7 @@
         terminado = true;
         jugando = false;
         if (cuenta && !porTiempo) cuenta.parar();
-        aviso.textContent = porTiempo ? 'Tiempo cumplido' : 'Se acabaron las vidas';
+        avisar(porTiempo ? 'Tiempo cumplido' : 'Se acabaron las vidas');
         if (puntos > mejor) {
           mejor = puntos;
           try { localStorage.setItem('jb_ladrillos', String(mejor)); } catch (e) {}
@@ -515,10 +580,97 @@
         pintarBola();
         pintarDestellos();
         if (!lanzada && !terminado && jugando) pintarPista();
+        pintarHud();
+        pintarAviso();
       }
 
-      /* La pista (degradado, rejilla y vineta) no cambia: se pinta una sola
-         vez en un lienzo aparte y cada cuadro solo se copia. */
+      /* ---------------------------------------------------------------
+         Marcador de cristal: score, level y lives en tres pastillas.
+         --------------------------------------------------------------- */
+      function pastilla(x, y, w, hh) {
+        caja(ctx, x, y, w, hh, hh / 2);
+        var deg = ctx.createLinearGradient(0, y, 0, y + hh);
+        deg.addColorStop(0, 'rgba(255,255,255,.72)');
+        deg.addColorStop(1, 'rgba(215,236,250,.55)');
+        ctx.fillStyle = deg;
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,.95)';
+        ctx.lineWidth = 0.45;
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(120,185,235,.55)';
+        ctx.lineWidth = 0.25;
+        caja(ctx, x + 0.5, y + 0.5, w - 1, hh - 1, hh / 2 - 0.5);
+        ctx.stroke();
+      }
+
+      function texto(t, x, y, tam, alinea, peso, color) {
+        ctx.font = (peso || 600) + ' ' + tam + 'px ' + FUENTE;
+        ctx.textAlign = alinea || 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = color || '#2B4F86';
+        ctx.fillText(t, x, y);
+      }
+
+      function seisCifras(n) {
+        return n < 1000000 ? ('000000' + n).slice(-6) : String(n);
+      }
+
+      function pintarHud() {
+        /* la barra entera */
+        caja(ctx, 1.5, 1.2, FW - 3, HUD_ALTO - 2.4, 5);
+        var deg = ctx.createLinearGradient(0, 1, 0, HUD_ALTO);
+        deg.addColorStop(0, 'rgba(255,255,255,.60)');
+        deg.addColorStop(1, 'rgba(200,228,246,.45)');
+        ctx.fillStyle = deg;
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,.9)';
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+
+        var y = 2.6, hh = HUD_ALTO - 5.2;
+        pastilla(4, y, 32, hh);
+        texto('SCORE', 20, y + hh * 0.3, 2.3, 'center', 600, '#4A78B0');
+        texto(seisCifras(puntos), 20, y + hh * 0.7, 4.2, 'center', 700);
+
+        ctx.strokeStyle = 'rgba(110,170,220,.7)';
+        ctx.lineWidth = 0.4;
+        ctx.beginPath();
+        ctx.moveTo(38.5, y + 1); ctx.lineTo(38.5, y + hh - 1);
+        ctx.moveTo(61.5, y + 1); ctx.lineTo(61.5, y + hh - 1);
+        ctx.stroke();
+
+        texto('LEVEL', 50, y + hh * 0.3, 2.3, 'center', 600, '#4A78B0');
+        texto(String(nivel), 50, y + hh * 0.7, 4.2, 'center', 700);
+
+        pastilla(64, y, 32, hh);
+        texto('LIVES', 80, y + hh * 0.3, 2.3, 'center', 600, '#4A78B0');
+        var n = Math.max(vidas, 0), cw = n > 3 ? 3.4 : 4.2, sep = 0.7;
+        var x0 = 80 - (n * cw + (n - 1) * sep) / 2;
+        for (var i = 0; i < n; i++) {
+          if (lista('corazon')) imagen(ctx, 'corazon', x0 + i * (cw + sep), y + hh * 0.7 - cw * 0.42, cw, cw * 0.9);
+          else texto('\u2665', x0 + i * (cw + sep) + cw / 2, y + hh * 0.7, 3.6, 'center', 700, '#2BB5D8');
+        }
+      }
+
+      /** Aviso sobre la paleta: la pista para lanzar, o lo ultimo que paso. */
+      function pintarAviso() {
+        var t = mensaje.t > 0 ? mensaje.texto : '';
+        var alfa = mensaje.t > 0 ? Math.min(1, mensaje.t / 0.4) : 1;
+        if (!t && !lanzada && jugando && !terminado) { t = 'Toca la pantalla para lanzar la bola'; alfa = 0.9; }
+        if (!t) return;
+        ctx.globalAlpha = alfa;
+        ctx.font = '600 3px ' + FUENTE;
+        var w = ctx.measureText(t).width + 7, hh = 6, x = (FW - w) / 2, y = PALA_Y - 22;
+        caja(ctx, x, y, w, hh, 3);
+        ctx.fillStyle = 'rgba(40,80,130,.55)';
+        ctx.fill();
+        texto(t, FW / 2, y + hh / 2, 3, 'center', 600, '#FFFFFF');
+        ctx.globalAlpha = 1;
+      }
+
+      /* La pista no cambia: se pinta una sola vez en un lienzo aparte y cada
+         cuadro solo se copia. Es la foto del fondo (el rostro, la pipeta y
+         las burbujas) recortada al campo, con el marco de cristal encima. */
       function pintarPista2() {
         if (!pctx) return;
         pista.width = lienzo.width;
@@ -527,28 +679,40 @@
         g.setTransform(escala, 0, 0, escala, 0, 0);
 
         var deg = g.createLinearGradient(0, 0, 0, FH);
-        deg.addColorStop(0, '#1C1531');
-        deg.addColorStop(0.55, '#2B1E3D');
-        deg.addColorStop(1, '#3D2440');
+        deg.addColorStop(0, '#EAF4FB');
+        deg.addColorStop(1, '#D3E8F6');
         g.fillStyle = deg;
         g.fillRect(0, 0, FW, FH);
 
-        g.strokeStyle = 'rgba(255,255,255,.035)';
-        g.lineWidth = 0.3;
-        g.beginPath();
-        for (var v = 0; v <= FW; v += 10) { g.moveTo(v, 0); g.lineTo(v, FH); }
-        for (var hh = 0; hh <= FH; hh += 10) { g.moveTo(0, hh); g.lineTo(FW, hh); }
-        g.stroke();
+        /* el campo, con la foto cubriendolo entero (como background-size: cover) */
+        var cx = 1.2, cy = HUD_ALTO + 0.4, cw = FW - 2.4, ch = FH - cy - 1.2;
+        g.save();
+        caja(g, cx, cy, cw, ch, 4);
+        g.clip();
+        if (lista('fondo')) {
+          var im = IMG.fondo;
+          var sc = Math.max(cw / im.naturalWidth, ch / im.naturalHeight);
+          var iw = im.naturalWidth * sc, ih = im.naturalHeight * sc;
+          g.drawImage(im, cx + (cw - iw) / 2, cy + (ch - ih) / 2, iw, ih);
+        } else {
+          g.fillStyle = '#DCEEF9';
+          g.fillRect(cx, cy, cw, ch);
+        }
+        g.restore();
 
-        var vin = g.createRadialGradient(FW / 2, FH * 0.45, FW * 0.3, FW / 2, FH * 0.5, FW * 0.95);
-        vin.addColorStop(0, 'rgba(0,0,0,0)');
-        vin.addColorStop(1, 'rgba(0,0,0,.42)');
-        g.fillStyle = vin;
-        g.fillRect(0, 0, FW, FH);
+        /* marco de cristal: linea blanca con halo azul */
+        g.strokeStyle = 'rgba(120,190,240,.55)';
+        g.lineWidth = 1.6;
+        caja(g, cx, cy, cw, ch, 4);
+        g.stroke();
+        g.strokeStyle = 'rgba(255,255,255,.95)';
+        g.lineWidth = 0.6;
+        caja(g, cx, cy, cw, ch, 4);
+        g.stroke();
       }
 
       function fondo() {
-        ctx.fillStyle = '#241B39';
+        ctx.fillStyle = '#DCEEF9';
         ctx.fillRect(-4, -4, FW + 8, FH + 8);
         ctx.drawImage(pista, 0, 0, FW, FH);
 
@@ -570,21 +734,26 @@
         var bx = ((tiempo * 11) % (FW + 70)) - 35;
         var br = ctx.createLinearGradient(bx - 16, 0, bx + 16, FH);
         br.addColorStop(0, 'rgba(255,255,255,0)');
-        br.addColorStop(0.5, 'rgba(255,255,255,.05)');
+        br.addColorStop(0.5, 'rgba(255,255,255,.14)');
         br.addColorStop(1, 'rgba(255,255,255,0)');
         ctx.fillStyle = br;
         ctx.fillRect(0, 0, FW, FH);
 
-        /* linea de peligro, latiendo */
-        var pulso = (0.3 + 0.25 * Math.sin(tiempo * 3)).toFixed(2);
-        ctx.strokeStyle = 'rgba(255,95,85,' + pulso + ')';
-        ctx.setLineDash([2.4, 2.4]);
-        ctx.lineWidth = 0.5;
-        ctx.beginPath();
-        ctx.moveTo(0, FH - 2.2);
-        ctx.lineTo(FW, FH - 2.2);
-        ctx.stroke();
-        ctx.setLineDash([]);
+        /* guia de rebote: la linea de guiones de abajo, latiendo */
+        ctx.globalAlpha = 0.55 + 0.35 * Math.sin(tiempo * 3);
+        if (lista('guia')) {
+          for (var gx = 4; gx < FW - 4; gx += 6) imagen(ctx, 'guia', gx, FH - 4.4, 4.2, 1.1);
+        } else {
+          ctx.strokeStyle = '#3FB2E8';
+          ctx.setLineDash([4.2, 1.8]);
+          ctx.lineWidth = 0.7;
+          ctx.beginPath();
+          ctx.moveTo(4, FH - 3.9);
+          ctx.lineTo(FW - 4, FH - 3.9);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+        ctx.globalAlpha = 1;
       }
 
       /** Eco que deja el ladrillo al romperse. */
@@ -609,23 +778,23 @@
           var g;
           ctx.globalAlpha = f * 0.85;
           if (d.lado === 'alto') {
-            g = ctx.createLinearGradient(0, 0, 0, 8);
-            g.addColorStop(0, 'rgba(255,240,200,.95)');
-            g.addColorStop(1, 'rgba(255,240,200,0)');
+            g = ctx.createLinearGradient(0, TECHO, 0, TECHO + 8);
+            g.addColorStop(0, 'rgba(150,215,255,.95)');
+            g.addColorStop(1, 'rgba(150,215,255,0)');
             ctx.fillStyle = g;
-            ctx.fillRect(d.donde - 10, 0, 20, 8);
+            ctx.fillRect(d.donde - 10, TECHO, 20, 8);
           } else if (d.lado === 'izq') {
-            g = ctx.createLinearGradient(0, 0, 8, 0);
-            g.addColorStop(0, 'rgba(255,240,200,.95)');
-            g.addColorStop(1, 'rgba(255,240,200,0)');
+            g = ctx.createLinearGradient(LADO, 0, LADO + 8, 0);
+            g.addColorStop(0, 'rgba(150,215,255,.95)');
+            g.addColorStop(1, 'rgba(150,215,255,0)');
             ctx.fillStyle = g;
-            ctx.fillRect(0, d.donde - 10, 8, 20);
+            ctx.fillRect(LADO, d.donde - 10, 8, 20);
           } else {
-            g = ctx.createLinearGradient(FW, 0, FW - 8, 0);
-            g.addColorStop(0, 'rgba(255,240,200,.95)');
-            g.addColorStop(1, 'rgba(255,240,200,0)');
+            g = ctx.createLinearGradient(FW - LADO, 0, FW - LADO - 8, 0);
+            g.addColorStop(0, 'rgba(150,215,255,.95)');
+            g.addColorStop(1, 'rgba(150,215,255,0)');
             ctx.fillStyle = g;
-            ctx.fillRect(FW - 8, d.donde - 10, 8, 20);
+            ctx.fillRect(FW - LADO - 8, d.donde - 10, 8, 20);
           }
         }
         ctx.globalAlpha = 1;
@@ -635,37 +804,30 @@
         for (var i = 0; i < ladrillos.length; i++) {
           var l = ladrillos[i];
           if (!l.vivo) continue;
-          if (!l.deg) {
-            l.deg = ctx.createLinearGradient(0, l.y, 0, l.y + l.h);
-            l.deg.addColorStop(0, l.def.luz);
-            l.deg.addColorStop(0.45, l.def.color);
-            l.deg.addColorStop(1, l.def.osc);
+
+          /* sombra suave debajo, para que el cristal se despegue del fondo */
+          ctx.fillStyle = 'rgba(' + l.def.brillo + ',.16)';
+          caja(ctx, l.x - 0.6, l.y - 0.2, l.w + 1.2, l.h + 1.6, 1.5);
+          ctx.fill();
+
+          if (lista(l.foto)) {
+            imagen(ctx, l.foto, l.x - 0.25, l.y - 0.25, l.w + 0.5, l.h + 0.5);
+          } else {
+            if (!l.deg) {
+              l.deg = ctx.createLinearGradient(0, l.y, 0, l.y + l.h);
+              l.deg.addColorStop(0, l.def.luz);
+              l.deg.addColorStop(0.45, l.def.color);
+              l.deg.addColorStop(1, l.def.osc);
+            }
+            caja(ctx, l.x, l.y, l.w, l.h, 1);
+            ctx.fillStyle = l.deg;
+            ctx.fill();
           }
 
-          /* resplandor sobre la pista oscura */
-          ctx.fillStyle = 'rgba(' + l.def.brillo + ',.20)';
-          caja(ctx, l.x - 0.8, l.y - 0.7, l.w + 1.6, l.h + 1.4, 1.5);
-          ctx.fill();
-
-          caja(ctx, l.x, l.y, l.w, l.h, 1);
-          ctx.fillStyle = l.deg;
-          ctx.fill();
-          ctx.strokeStyle = 'rgba(255,255,255,.4)';
-          ctx.lineWidth = 0.22;
-          ctx.stroke();
-
-          /* brillo de cristal en la mitad de arriba */
-          var gl = ctx.createLinearGradient(0, l.y, 0, l.y + l.h * 0.6);
-          gl.addColorStop(0, 'rgba(255,255,255,.6)');
-          gl.addColorStop(1, 'rgba(255,255,255,.04)');
-          ctx.fillStyle = gl;
-          caja(ctx, l.x + 0.5, l.y + 0.35, l.w - 1, l.h * 0.44, 0.6);
-          ctx.fill();
-
           if (l.vida > 1) {                       // ladrillo reforzado
-            ctx.strokeStyle = 'rgba(255,255,255,.85)';
+            ctx.strokeStyle = 'rgba(255,255,255,.9)';
             ctx.lineWidth = 0.4;
-            caja(ctx, l.x + 1.1, l.y + 1.1, l.w - 2.2, l.h - 2.2, 0.5);
+            caja(ctx, l.x + 1.1, l.y + 1.1, l.w - 2.2, l.h - 2.2, 0.7);
             ctx.stroke();
           }
           if (l.chispa > 0) {
@@ -720,27 +882,114 @@
 
         /* resplandor alrededor */
         var gl = ctx.createRadialGradient(cx, cy, 0.5, cx, cy, pala.w * 0.8);
-        gl.addColorStop(0, 'rgba(255,205,110,.38)');
-        gl.addColorStop(1, 'rgba(255,205,110,0)');
+        gl.addColorStop(0, 'rgba(160,220,255,.45)');
+        gl.addColorStop(1, 'rgba(160,220,255,0)');
         ctx.fillStyle = gl;
         ctx.beginPath();
         ctx.ellipse(cx, cy, pala.w * 0.8, PALA_H * 2.6, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        var deg = ctx.createLinearGradient(0, PALA_Y, 0, PALA_Y + PALA_H);
-        deg.addColorStop(0, '#FFF1D2');
-        deg.addColorStop(0.45, '#F0B429');
-        deg.addColorStop(1, '#A9700D');
-        caja(ctx, pala.x, PALA_Y, pala.w, PALA_H, PALA_H / 2);
-        ctx.fillStyle = deg;
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(255,244,214,.85)';
-        ctx.lineWidth = 0.26;
-        ctx.stroke();
+        pintarJeringa(pala.x, PALA_Y, pala.w, PALA_H);
+      }
 
-        ctx.fillStyle = 'rgba(255,255,255,.55)';
-        caja(ctx, pala.x + 1.4, PALA_Y + 0.42, pala.w - 2.8, PALA_H * 0.3, PALA_H * 0.15);
+      /* La paleta es una jeringa tumbada, dibujada a mano para que se vea
+         nitida a cualquier ancho (la capsula 'A' la alarga): a la izquierda
+         el embolo, en medio el cilindro de cristal con el relleno dorado y
+         las rayitas de medida, y a la derecha la aguja. Todo cabe en el
+         ancho de choque, asi la bola rebota justo donde se ve. */
+      function pintarJeringa(x, y, w, h) {
+        var cy = y + h / 2;
+        var embolo = h * 0.55;                 // vastago que asoma
+        var tope = h * 0.42;                   // la pieza donde se apoya el pulgar
+        var aleta = h * 0.32;                  // las alas del cilindro
+        var aguja = Math.max(h * 1.6, w * 0.16);
+        var cono = h * 0.55;
+        var x0 = x + tope + embolo;            // empieza el cilindro
+        var x1 = x + w - aguja - cono;         // acaba el cilindro
+        var lleno = x0 + (x1 - x0) * 0.62;     // hasta donde llega el liquido
+        var i;
+
+        /* aguja: metal fino con brillo */
+        var ga = ctx.createLinearGradient(0, cy - 0.35, 0, cy + 0.35);
+        ga.addColorStop(0, '#FFFFFF'); ga.addColorStop(1, '#8E9BA6');
+        ctx.fillStyle = ga;
+        ctx.beginPath();
+        ctx.moveTo(x1 + cono - 0.2, cy - 0.32);
+        ctx.lineTo(x + w - 0.6, cy - 0.12);
+        ctx.lineTo(x + w, cy + 0.32);
+        ctx.lineTo(x1 + cono - 0.2, cy + 0.32);
+        ctx.closePath();
         ctx.fill();
+
+        /* cono de la punta */
+        ctx.fillStyle = '#E9D3A6';
+        ctx.beginPath();
+        ctx.moveTo(x1 - 0.1, cy - h * 0.34);
+        ctx.lineTo(x1 + cono, cy - h * 0.14);
+        ctx.lineTo(x1 + cono, cy + h * 0.14);
+        ctx.lineTo(x1 - 0.1, cy + h * 0.34);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = '#B08A48'; ctx.lineWidth = 0.18; ctx.stroke();
+
+        /* embolo: tope del pulgar y vastago */
+        ctx.fillStyle = '#F4ECDD';
+        caja(ctx, x, y - h * 0.08, tope, h * 1.16, tope * 0.45);
+        ctx.fill();
+        ctx.strokeStyle = '#B08A48'; ctx.lineWidth = 0.2; ctx.stroke();
+        ctx.fillStyle = '#E6D7BC';
+        ctx.fillRect(x + tope - 0.1, cy - h * 0.13, embolo + 0.4, h * 0.26);
+
+        /* alas del cilindro */
+        ctx.fillStyle = '#D9C39A';
+        caja(ctx, x0 - aleta * 0.5, y - h * 0.22, aleta, h * 1.44, aleta * 0.4);
+        ctx.fill();
+
+        /* cilindro de cristal */
+        var gc = ctx.createLinearGradient(0, y, 0, y + h);
+        gc.addColorStop(0, 'rgba(255,255,255,.95)');
+        gc.addColorStop(0.45, 'rgba(232,244,252,.85)');
+        gc.addColorStop(1, 'rgba(176,206,228,.9)');
+        caja(ctx, x0, y, x1 - x0, h, h * 0.22);
+        ctx.fillStyle = gc;
+        ctx.fill();
+
+        /* liquido dorado, desde la punta hacia el embolo */
+        var gl = ctx.createLinearGradient(0, y, 0, y + h);
+        gl.addColorStop(0, 'rgba(246,214,140,.95)');
+        gl.addColorStop(1, 'rgba(201,150,62,.95)');
+        ctx.fillStyle = gl;
+        caja(ctx, lleno, y + h * 0.16, x1 - lleno - h * 0.12, h * 0.68, h * 0.14);
+        ctx.fill();
+
+        /* el vastago sigue por dentro del cristal hasta la goma */
+        ctx.fillStyle = 'rgba(214,196,160,.75)';
+        ctx.fillRect(x0, cy - h * 0.13, lleno - x0, h * 0.26);
+
+        /* goma del embolo, dentro del cilindro */
+        ctx.fillStyle = '#4A3A2C';
+        ctx.fillRect(lleno - h * 0.28, y + h * 0.12, h * 0.28, h * 0.76);
+
+        /* rayitas de medida */
+        ctx.strokeStyle = 'rgba(120,96,60,.75)';
+        ctx.lineWidth = 0.14;
+        var paso = (x1 - x0) / 10;
+        for (i = 1; i < 10; i++) {
+          var rx = x0 + paso * i;
+          ctx.beginPath();
+          ctx.moveTo(rx, y + 0.1);
+          ctx.lineTo(rx, y + h * (i % 5 === 0 ? 0.42 : 0.26));
+          ctx.stroke();
+        }
+
+        /* brillo y borde */
+        ctx.fillStyle = 'rgba(255,255,255,.7)';
+        caja(ctx, x0 + h * 0.3, y + h * 0.1, (x1 - x0) - h * 0.6, h * 0.14, h * 0.07);
+        ctx.fill();
+        caja(ctx, x0, y, x1 - x0, h, h * 0.22);
+        ctx.strokeStyle = '#B08A48';
+        ctx.lineWidth = 0.24;
+        ctx.stroke();
       }
 
       function pintarEstela() {
@@ -748,7 +997,7 @@
           var p = estela[i];
           var f = (i + 1) / estela.length;
           ctx.globalAlpha = f * 0.35;
-          ctx.fillStyle = '#FFD98A';
+          ctx.fillStyle = dura ? '#FFC24A' : '#BFE6FF';
           ctx.beginPath();
           ctx.arc(p.x, p.y, RADIO * f * 0.85, 0, Math.PI * 2);
           ctx.fill();
@@ -757,50 +1006,48 @@
       }
 
       function pintarBola() {
-        /* Halo dorado */
-        var halo = ctx.createRadialGradient(bola.x, bola.y, RADIO * 0.6, bola.x, bola.y, RADIO * 2);
-        halo.addColorStop(0, 'rgba(255,214,130,.55)');
-        halo.addColorStop(1, 'rgba(255,214,130,0)');
+        /* halo: azulado de normal, dorado y latiendo cuando es perforante */
+        var rh = dura ? RADIO * (2.8 + 0.4 * Math.sin(tiempo * 12)) : RADIO * 2.2;
+        var halo = ctx.createRadialGradient(bola.x, bola.y, RADIO * 0.6, bola.x, bola.y, rh);
+        if (dura) {
+          halo.addColorStop(0, 'rgba(255,200,90,.85)');
+          halo.addColorStop(0.5, 'rgba(255,150,60,.35)');
+          halo.addColorStop(1, 'rgba(255,150,60,0)');
+        } else {
+          halo.addColorStop(0, 'rgba(170,225,255,.6)');
+          halo.addColorStop(1, 'rgba(170,225,255,0)');
+        }
         ctx.fillStyle = halo;
         ctx.beginPath();
-        ctx.arc(bola.x, bola.y, RADIO * 2, 0, Math.PI * 2);
+        ctx.arc(bola.x, bola.y, rh, 0, Math.PI * 2);
         ctx.fill();
 
-        /* Fondo claro para que el emblema se lea siempre */
-        ctx.fillStyle = '#FFFDF8';
+        if (lista('bola')) {
+          var d = RADIO * 2.1;
+          ctx.save();
+          ctx.translate(bola.x, bola.y);
+          ctx.rotate(bola.giro * 0.3);
+          ctx.drawImage(IMG.bola, -d / 2, -d / 2, d, d);
+          ctx.restore();
+          return;
+        }
+
+        var deg = ctx.createRadialGradient(bola.x - RADIO * 0.4, bola.y - RADIO * 0.4, 0.3, bola.x, bola.y, RADIO);
+        deg.addColorStop(0, '#FFFFFF');
+        deg.addColorStop(1, '#9CCBEA');
+        ctx.fillStyle = deg;
         ctx.beginPath();
         ctx.arc(bola.x, bola.y, RADIO, 0, Math.PI * 2);
         ctx.fill();
-
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(bola.x, bola.y, RADIO - 0.15, 0, Math.PI * 2);
-        ctx.clip();
-        if (logoListo && recorte) {
-          var d = (RADIO - 0.15) * 2;
-          ctx.translate(bola.x, bola.y);
-          ctx.rotate(bola.giro);
-          ctx.drawImage(logo, recorte.x, recorte.y, recorte.w, recorte.h, -d / 2, -d / 2, d, d);
-        } else {
-          var oro = ctx.createLinearGradient(bola.x - RADIO, bola.y - RADIO, bola.x + RADIO, bola.y + RADIO);
-          oro.addColorStop(0, '#E3C593');
-          oro.addColorStop(1, '#8B6A38');
-          ctx.fillStyle = oro;
-          ctx.fillRect(bola.x - RADIO, bola.y - RADIO, RADIO * 2, RADIO * 2);
-        }
-        ctx.restore();
-
-        ctx.strokeStyle = 'rgba(139,106,56,.5)';
+        ctx.strokeStyle = 'rgba(255,255,255,.9)';
         ctx.lineWidth = 0.3;
-        ctx.beginPath();
-        ctx.arc(bola.x, bola.y, RADIO - 0.15, 0, Math.PI * 2);
         ctx.stroke();
       }
 
       /** Puntitos hacia arriba mientras la bola espera en la paleta. */
       function pintarPista() {
         ctx.globalAlpha = 0.35 + 0.35 * Math.sin(tiempo * 4);
-        ctx.fillStyle = '#FFE9B8';
+        ctx.fillStyle = '#FFFFFF';
         for (var i = 1; i <= 3; i++) {
           ctx.beginPath();
           ctx.arc(bola.x, bola.y - RADIO - 2 - i * 2.6, 0.55, 0, Math.PI * 2);
@@ -814,7 +1061,7 @@
         var r = lienzo.getBoundingClientRect();
         if (!r.width) return pala.destino;
         var x = (clienteX - r.left) / r.width * FW;
-        return Math.max(0, Math.min(FW - pala.w, x - pala.w / 2));
+        return Math.max(LADO, Math.min(FW - LADO - pala.w, x - pala.w / 2));
       }
 
       function apuntar(e) {
@@ -885,6 +1132,7 @@
       /* Minuto y medio de partida. */
       cuenta = api.cuenta(LIMITE, function () { acabar(true); });
 
+      cargar(function () { if (!terminado) medir(); });   // al llegar las fotos, se repinta
       medir();
       api.luego(medir, 450);                 // otra vez tras la animacion de entrada
       pintarVidas();

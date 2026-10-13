@@ -1,7 +1,11 @@
 /* ==========================================================================
-   JUEGO 1 - MEMORIA: encuentra las parejas (12 parejas, tablero de 24)
+   JUEGO 1 - MEMORIA: encuentra las parejas (8 parejas, tablero de 16)
    Los dibujos son productos de estetica hechos en SVG, con color vivo y
    contorno grueso para que se vean de lejos en la pantalla del totem.
+   Viste el tema marfil (marfil, champan y oro): la marca arriba, las cartas
+   con el logo por delante y un marco dorado por detras, sombras de hojas y
+   ondas de fondo. Las imagenes salen de assets/img/memoria
+   (ver herramientas/preparar-assets-memoria.py).
    ========================================================================== */
 
 (function () {
@@ -24,11 +28,83 @@
   }
 
   /* ---------------------------------------------------------------
-     Que se ve al voltear la carta: 'numeros' (grandes, faciles de
-     emparejar) o 'productos' (los dibujos de abajo). Cambia esta linea
-     y ya esta.
+     Que se ve al voltear la carta:
+       'catalogo'  las fotos de los productos de la clinica (por defecto)
+       'numeros'   numeros grandes, los mas faciles de emparejar
+       'productos' los dibujos en SVG de mas abajo
+     Cambia esta linea y ya esta.
      --------------------------------------------------------------- */
-  var MODO = 'numeros';
+  var MODO = 'catalogo';
+
+  /* ---------------------------------------------------------------
+     EL CATALOGO DE LA CLINICA
+
+     Son los productos de estetica que hay de verdad en el almacen (hoja
+     PRODUCTOS de 'Consolidado Almacen Limpio.xlsx'). Las fotos oficiales
+     estan en herramientas/fotos-almacen y se pasan a carta con
+     herramientas/preparar-catalogo-almacen.py. Cada partida saca ocho al
+     azar de la lista, asi que el tablero casi nunca se repite.
+
+     Son cincuenta. Si algun dia se anaden productos, se
+     recortan con el script y se apuntan aqui: el juego los coge solo.
+     --------------------------------------------------------------- */
+  var CATALOGO = [
+    { id: 'p01', nombre: 'Botox®' },
+    { id: 'p02', nombre: 'Dysport®' },
+    { id: 'p03', nombre: 'Newlux®' },
+    { id: 'p04', nombre: 'Juvéderm® Volux' },
+    { id: 'p05', nombre: 'Juvéderm® Voluma' },
+    { id: 'p06', nombre: 'Juvéderm® Volbella' },
+    { id: 'p07', nombre: 'HArmonyCa™' },
+    { id: 'p08', nombre: 'Sculptra®' },
+    { id: 'p09', nombre: 'Ellansé® M' },
+    { id: 'p10', nombre: 'Profhilo® H+L' },
+    { id: 'p11', nombre: 'Lanluma® V' },
+    { id: 'p12', nombre: 'Lanluma® X' },
+    { id: 'p13', nombre: 'Jalupro® Classic' },
+    { id: 'p14', nombre: 'Jalupro® HMW' },
+    { id: 'p15', nombre: 'Jalupro® Young Eye' },
+    { id: 'p16', nombre: 'Jalupro® Super Hydro' },
+    { id: 'p17', nombre: 'Saypha® Filler' },
+    { id: 'p18', nombre: 'Saypha® Volume' },
+    { id: 'p19', nombre: 'Saypha® Volume Plus' },
+    { id: 'p20', nombre: 'Rejuran® Healer' },
+    { id: 'p21', nombre: 'Rejuran® i' },
+    { id: 'p22', nombre: 'Youtheal Skinbooster' },
+    { id: 'p23', nombre: 'Infini Premium Filler B Body' },
+    { id: 'p24', nombre: 'PolyPhil® Next' },
+    { id: 'p25', nombre: 'Mesofiller Intense' },
+    { id: 'p26', nombre: 'SkinCeuticals C E Ferulic®' },
+    { id: 'p27', nombre: 'SkinCeuticals Phloretin CF®' },
+    { id: 'p28', nombre: 'SkinCeuticals Silymarin CF' },
+    { id: 'p29', nombre: 'SkinCeuticals Phyto Corrective' },
+    { id: 'p30', nombre: 'SkinCeuticals H.A. Intensifier' },
+    { id: 'p31', nombre: 'SkinCeuticals A.G.E. Interrupter' },
+    { id: 'p32', nombre: 'SkinCeuticals Discoloration Defense' },
+    { id: 'p33', nombre: 'SkinCeuticals Blemish + Age Defense' },
+    { id: 'p34', nombre: 'SkinCeuticals Retinol 0.3' },
+    { id: 'p35', nombre: 'SkinCeuticals Hydrating B5' },
+    { id: 'p36', nombre: 'SkinCeuticals Metacell Renewal B3' },
+    { id: 'p37', nombre: 'SkinCeuticals Physical Fusion UV Defense' },
+    { id: 'p38', nombre: 'ISDIN Fusion Water Magic' },
+    { id: 'p39', nombre: 'pbserum HA' },
+    { id: 'p40', nombre: 'pbserum Slim+' },
+    { id: 'p41', nombre: 'pbserum Neoskin Striae' },
+    { id: 'p42', nombre: 'Mesoestetic Cosmelan®' },
+    { id: 'p43', nombre: 'Mesoestetic Melan 130' },
+    { id: 'p44', nombre: 'Mesoestetic AOX Ferulic' },
+    { id: 'p45', nombre: 'Glutanex Cica Cream' },
+    { id: 'p46', nombre: 'SVR Cicavit+' },
+    { id: 'p47', nombre: 'SVR Topialyse Huile Lavante' },
+    { id: 'p48', nombre: 'Avène Agua Termal' },
+    { id: 'p49', nombre: 'Selective Care Argireline Complex' },
+    { id: 'p50', nombre: 'SkinCeuticals Cell Cycle Catalyst' }
+  ];
+
+  CATALOGO.forEach(function (c) {
+    c.d = '<img src="assets/img/memoria/catalogo/producto-' + c.id.slice(1) +
+          '.jpg" alt="" loading="lazy">';
+  });
 
   /* Hay mas numeros que parejas en el tablero: cada partida saca doce al
      azar de estos veinte, asi no sale nunca la misma baraja.
@@ -41,8 +117,8 @@
     NUMEROS.push({
       id: 'n' + n,
       nombre: String(n),
-      d: ficha('hsl(' + tono + ',72%,91%)',
-          '<circle cx="12" cy="12" r="8.4" fill="hsl(' + tono + ',66%,55%)" stroke="' + LINEA + '" stroke-width="1.5"/>' +
+      d: ficha('hsl(' + tono + ',38%,92%)',
+          '<circle cx="12" cy="12" r="8.4" fill="hsl(' + tono + ',34%,52%)" stroke="#A98F6B" stroke-width="1.2"/>' +
           '<text x="12" y="12.4" text-anchor="middle" dominant-baseline="central" fill="#FFF8EC" ' +
           'font-family="Georgia, serif" font-weight="700" ' +
           'font-size="' + (n > 9 ? 8.4 : 10.4) + '">' + n + '</text>')
@@ -129,12 +205,18 @@
     }
   ];
 
-  var FICHAS = MODO === 'numeros' ? NUMEROS : PRODUCTOS;
+  var FICHAS = MODO === 'catalogo' ? CATALOGO
+              : (MODO === 'numeros' ? NUMEROS : PRODUCTOS);
 
-  /* Dificultad alta: 12 parejas en minuto y medio, y las cartas falladas
+  /* Dificultad alta: 8 parejas en 35 segundos, y las cartas falladas
      se tapan antes (menos tiempo para memorizarlas). */
-  var PAREJAS = 12;
+  var PAREJAS = 8;
   var VISTAZO = 620;
+
+  var RUTA = 'assets/img/memoria/';
+  function img(archivo, clase) {
+    return h('img', { class: clase || null, src: RUTA + archivo, alt: '', 'aria-hidden': 'true' });
+  }
 
   var CONSEJOS = [
     'Un buen descanso se nota en la piel: intenta dormir entre 7 y 9 horas.',
@@ -148,7 +230,7 @@
     id: 'memoria',
     nombre: 'Memoria',
     emoji: '🧴',
-    desc: 'Encuentra las 12 parejas',
+    desc: 'Encuentra las 8 parejas',
     sub: 'Parejas',
 
     iniciar: function (vista, api) {
@@ -163,8 +245,11 @@
       var valorMovimientos = h('span', { class: 'val' }, '0');
       var valorParejas = h('span', { class: 'val' }, '0/' + PAREJAS);
       var marcador = h('div', { class: 'marcador' },
-        h('div', { class: 'dato' }, valorMovimientos, h('span', { class: 'etq' }, 'Intentos')),
-        h('div', { class: 'dato' }, valorParejas, h('span', { class: 'etq' }, 'Parejas'))
+        h('div', { class: 'dato' }, img('estrella.png', 'dato-estrella'),
+          h('span', { class: 'dato-texto' }, valorMovimientos, h('span', { class: 'etq' }, 'Intentos'))),
+        h('div', { class: 'dato' },
+          h('span', { class: 'dato-texto' }, valorParejas, h('span', { class: 'etq' }, 'Parejas')),
+          img('estrella.png', 'dato-estrella'))
       );
 
       /* --- Tablero --- */
@@ -186,12 +271,52 @@
         tablero.appendChild(carta);
       });
 
+      vista.classList.add('tema-marfil');
+      vista.appendChild(h('div', { class: 'marfil-deco', 'aria-hidden': 'true' },
+        img('onda-arriba.png', 'deco-onda-arriba'),
+        img('onda-abajo.png', 'deco-onda-abajo'),
+        img('hoja-izq.png', 'deco-hoja-izq'),
+        img('hoja-der.png', 'deco-hoja-der'),
+        h('p', { class: 'tagline-izq' }, 'Cuida tu esencia en cada detalle'),
+        img('tagline-derecha.png', 'tagline-der')
+      ));
+      vista.appendChild(h('div', { class: 'marfil-marca' }, img('marca.png')));
       vista.appendChild(marcador);
       vista.appendChild(h('div', { class: 'centro' }, tablero));
-      vista.appendChild(h('p', { class: 'aviso' }, 'Toca dos cartas y memoriza dónde está cada ' +
-        (MODO === 'numeros' ? 'número' : 'producto')));
+      var PISTA = 'Toca dos cartas y memoriza dónde está cada ' +
+                  (MODO === 'numeros' ? 'número' : 'producto');
+      var aviso = h('p', { class: 'aviso' }, PISTA);
+      vista.appendChild(aviso);
+      vista.appendChild(h('p', { class: 'marfil-pie' },
+        h('span', {}, 'Armonía'), h('i', {}), h('span', {}, 'Bienestar'), h('i', {}), h('span', {}, 'Tu mejor versión')));
 
-      /* --- Cuenta atras: la partida dura minuto y medio --- */
+      /* ---------------------------------------------------------------
+         EL VISTAZO DEL PRINCIPIO
+
+         Antes de empezar se destapan TODAS las cartas dos segundos, para
+         que se vea de una lo que hay. El reloj no arranca hasta que se
+         vuelven a tapar: el vistazo es de regalo, no se paga con tiempo.
+         --------------------------------------------------------------- */
+      var VISTAZO_INICIO = 2000;
+
+      function empezarConVistazo() {
+        var todas = tablero.querySelectorAll('.carta');
+        var i;
+        bloqueado = true;
+        for (i = 0; i < todas.length; i++) todas[i].classList.add('volteada');
+        aviso.textContent = 'Mira bien: las cartas se tapan en un momento';
+        api.sonar('voltea');
+
+        api.luego(function () {
+          for (var k = 0; k < todas.length; k++) todas[k].classList.remove('volteada');
+          bloqueado = false;
+          aviso.textContent = PISTA;
+          arrancarReloj();
+        }, VISTAZO_INICIO);
+      }
+
+      /* --- Cuenta atras: la partida dura LIMITE segundos --- */
+      function arrancarReloj() {
       cuenta = api.cuenta(LIMITE, function () {
         if (terminado) return;
         terminado = true;
@@ -209,6 +334,9 @@
           ]
         });
       });
+      }
+
+      empezarConVistazo();
 
       /* --- Logica --- */
       function destapar(carta) {

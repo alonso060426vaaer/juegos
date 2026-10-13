@@ -1,44 +1,52 @@
 /* ==========================================================================
-   JUEGO 8 - PATOS AL VUELO (homenaje al clasico de los 80, en la playa)
-   Toca los patos antes de que se escapen. Tres tiros por pato.
+   JUEGO 8 - PATOS AL VUELO (edicion playa: ¡atrapa a la doctora!)
+   Toca a la doctora antes de que se escape: sale una pelota de billetes
+   hacia donde tocaste y, si le da, llueven billetes con sonido de caja.
+   Tres billetes por doctora, tres vidas y tres niveles cortos.
 
-   El fondo (cielo, sol, mar, arena, palmeras) se pinta una sola vez en un
-   lienzo aparte y cada cuadro solo se copia: asi puede tener mucho detalle
-   sin que la pantalla del totem vaya lenta.
+   Toda la escena sale de imagenes de assets/img/patos: la playa, la pelota,
+   el billete, el perro, las palmeras, la sombrilla, el cielo y el marcador.
+   Lo que no cambia (playa, sombrilla, palmeras) se pinta una sola vez en
+   lienzos aparte y cada cuadro solo se copia: asi el totem no va lento.
    ========================================================================== */
 
 (function () {
   'use strict';
 
   var TAU = Math.PI * 2;
+  var FUENTE = '"Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif';
 
-  /* Escena en unidades propias: 100 de ancho, el alto se adapta. */
+  /* Escena en unidades propias: 100 de ancho, el alto se adapta a la pantalla. */
   var FW = 100;
-  var FH = 130;
-  var FH_MIN = 80, FH_MAX = 190;
+  var FH = 178;
+  var FH_MIN = 60, FH_MAX = 220;
 
-  var HORIZONTE = 74;        // donde acaba el cielo y empieza el mar
-  var ORILLA    = 98;        // donde rompe el agua en la arena
-  var DUNA      = 112;       // loma de arena de delante (el perro sale detras)
+  var HORIZONTE = 113;       // donde acaba el cielo y empieza el mar
+  var ORILLA    = 127;       // donde rompe el agua en la arena
+  var DUNA      = 141;       // arena de delante: por ahi asoma el perro
 
-  var PATOS_RONDA = 6;                           // patos por ronda
-  var TIROS = 3;                                 // tiros por pato, como en el original
-  var RADIO_TIRO = 7;                            // margen de acierto al tocar
-  var OBJETIVO = 3;                              // llegar a esta ronda da premio
+  var POR_NIVEL  = 3;        // doctoras por nivel (la partida dura 35 s)
+  var NIVELES    = 3;        // niveles en total (los puntos del marcador)
+  var TIROS      = 3;        // billetes por doctora
+  var VIDAS      = 3;        // doctoras que se pueden escapar
+  var RADIO_TIRO = 8;        // margen de acierto al tocar, a lo ancho
+  var ALARGA     = 1.7;      // el cuerpo es alto y estrecho: el margen se estira a lo alto
+  var ALTO_DRA   = 23;       // alto de la doctora, en unidades del mundo
+  var OBJETIVO   = 2;        // llegar a este nivel da premio
 
   /* ---------------------------------------------------------------
      COMPENSACION DEL RETRASO TACTIL
 
      Entre que el dedo toca el cristal y que este codigo se entera pasa un
-     rato, y en ese rato el pato ya se ha movido. Perdonar a ciegas (dar por
-     bueno cualquier sitio donde el pato estuviera en el ultimo medio
-     segundo) arregla el retraso, pero tambien regala aciertos: hay que
-     bajar la velocidad para que no cante, y entonces el juego aburre.
+     rato, y en ese rato la doctora ya se ha movido. Perdonar a ciegas (dar
+     por bueno cualquier sitio donde estuviera en el ultimo medio segundo)
+     arregla el retraso, pero tambien regala aciertos: hay que bajar la
+     velocidad para que no cante, y entonces el juego aburre.
 
      Aqui se hace al reves: se calcula CUANDO toco el dedo de verdad y se
-     mira donde estaba el pato EN ESE INSTANTE. Es lo que hacen los juegos
-     de disparos en red para compensar el lag. Perdona el retraso, no la
-     punteria, asi que el pato puede volar rapido sin ser injusto.
+     mira donde estaba la doctora EN ESE INSTANTE. Es lo que hacen los
+     juegos de disparos en red para compensar el lag. Perdona el retraso,
+     no la punteria, asi que puede volar rapido sin ser injusto.
 
      El navegador marca cada toque con la hora en que ocurrio (e.timeStamp)
      y va en la misma escala que el reloj de los fotogramas, asi que esa
@@ -48,7 +56,7 @@
 
      PARA CALIBRARLO EN EL TOTEM: abre la consola del navegador y escribe
          PATOS_LAG_DEBUG = true
-     juega media docena de patos y mira
+     juega media docena de doctoras y mira
          PATOS_LAG
      El campo "media" son milisegundos. Divide entre 1000 y ponlo abajo.
      --------------------------------------------------------------- */
@@ -61,65 +69,101 @@
   var VENTANA_TOQUE = 0.08;   // margen de error alrededor del instante medido
   var INDULGENCIA   = 0.40;   // cuanto rastro se guarda, y red de seguridad
 
-  /* Tres especies: cuanto mas oscura, menos sale y mas puntos da. */
-  var TIPOS = [
-    { cabeza: '#27614A', cabezaLuz: '#4E9A72', collar: true,
-      pecho: '#8A5A3B', cuerpo: '#B9AA92', cuerpoLuz: '#DCD1BB', cuerpoOsc: '#7C6E58',
-      ala: '#CBBEA6', alaOsc: '#8D7F68', espejo: '#3E6E9E', puntos: 100, veces: 5 },
-    { cabeza: '#8A4A2E', cabezaLuz: '#B87049', collar: false,
-      pecho: '#A3603C', cuerpo: '#C08457', cuerpoLuz: '#E0AE80', cuerpoOsc: '#8A5A36',
-      ala: '#D3A277', alaOsc: '#96633C', espejo: '#8C5A33', puntos: 150, veces: 3 },
-    { cabeza: '#222A34', cabezaLuz: '#46566A', collar: false,
-      pecho: '#39444F', cuerpo: '#47535F', cuerpoLuz: '#6E7B89', cuerpoOsc: '#29313A',
-      ala: '#5C6875', alaOsc: '#39434E', espejo: '#6E8FA8', puntos: 200, veces: 2 }
-  ];
+  /* ---------------------------------------------------------------
+     Imagenes. Se cargan una vez por sesion y se comparten entre partidas.
+     --------------------------------------------------------------- */
+  var RUTA = 'assets/img/patos/';
+  var ARCHIVOS = {
+    playa: 'playa.jpg',
+    doctora: 'doctora-cuerpo.png',
+    perro: 'perro.png',
+    pelota: 'pelota.png',
+    billete: 'billete.png',
+    palmera: 'palmera.png',
+    sombrilla: 'sombrilla.png',
+    copa: 'copa.png',
+    vida: 'vida.png',
+    sol: 'sol.png',
+    nube1: 'nube-1.png',
+    nube2: 'nube-2.png',
+    gaviota1: 'gaviota-1.png',
+    gaviota2: 'gaviota-2.png',
+    loro: 'loro.png',
+    nivelLleno: 'nivel-lleno.png',
+    nivelVacio: 'nivel-vacio.png',
+    barraMarco: 'barra-marco.png',
+    barraRelleno: 'barra-relleno.png'
+  };
+  var IMG = {};
 
-  var BOLSA = [];
-  TIPOS.forEach(function (t) {
-    for (var i = 0; i < t.veces; i++) BOLSA.push(t);
-  });
+  /** Pide todas las imagenes y avisa cuando estan (o cuando fallan). */
+  function cargar(alTerminar) {
+    var faltan = 0;
+    function una() { if (--faltan === 0) alTerminar(); }
+    Object.keys(ARCHIVOS).forEach(function (n) {
+      var im = IMG[n];
+      if (!im) {
+        im = new Image();
+        im.src = RUTA + ARCHIVOS[n];
+        IMG[n] = im;
+      }
+      if (im.complete) return;
+      faltan++;
+      im.addEventListener('load', una);
+      im.addEventListener('error', una);
+    });
+    if (faltan === 0) alTerminar();
+  }
+
+  function lista(n) {
+    var im = IMG[n];
+    return !!(im && im.complete && im.naturalWidth > 0);
+  }
+
+  /** Alto que le toca a una imagen si se pinta con este ancho. */
+  function alto(n, ancho) {
+    var im = IMG[n];
+    return lista(n) ? ancho * im.naturalHeight / im.naturalWidth : ancho;
+  }
+
+  /** Lo contrario: que ancho le toca a una imagen si se pinta con este alto. */
+  function ancho(n, alto) {
+    var im = IMG[n];
+    return lista(n) ? alto * im.naturalWidth / im.naturalHeight : alto * 0.26;
+  }
 
   App.registrar({
     id: 'patos',
     nombre: 'Patos al Vuelo',
     emoji: '🦆',
-    desc: 'Tócalos antes de que escapen',
+    desc: 'Atrapa a la doctora antes de que escape',
     sub: 'Puntería',
 
     iniciar: function (vista, api) {
 
       /* ------------------------- Estado ------------------------- */
-      var puntos = 0, ronda = 1, indice = 0, aciertos = 0, tiros = TIROS;
-      var fase = 'intro';        // intro | volando | cayendo | escapa | ronda | fin
-      var pato = null, marcas = [];
-      var disparos = [], plumas = [], gotas = [], ondas = [];
-      var perro = { estado: 'oculto', alto: 0, t: 0, patos: 0 };
+      var puntos = 0, nivel = 1, indice = 0, tiros = TIROS, vidas = VIDAS;   // indice: atrapadas en este nivel
+      var fase = 'intro';        // intro | volando | atrapada | escapa | nivel | fin
+      var objetivo = null;
+      var disparos = [], chispas = [], letreros = [];
+      var pelotas = [], billetes = [];
+      var monton = [], montonEsc = 1, sacude = 0;   // el dinero amontonado abajo, de donde sale la pelota
+      var montonHecho = null;                      // ya pintado, listo para estampar
+      var perro = { estado: 'oculto', alto: 0, t: 0 };
+      var mensaje = { texto: '', t: 0 };
       var tiempo = 0;
       var terminado = false;
       var cuenta = null;
+      var quedaVisto = -1, quedaFrac = 0, barra = 1;   // barra de tiempo, suave
 
       var mejor = 0;
       try { mejor = parseInt(localStorage.getItem('jb_patos') || '0', 10) || 0; } catch (e) {}
 
       /* ------------------------- Pantalla ------------------------- */
-      var valPuntos = h('span', { class: 'val' }, '0');
-      var valRonda  = h('span', { class: 'val' }, '1');
-      var valTiros  = h('span', { class: 'val tiros' }, '');
-      var aviso = h('p', { class: 'aviso' }, 'Prepárate...');
-
+      vista.classList.add('patos-vista');
       var lienzo = h('canvas', { class: 'patos' });
-      var zona = h('div', {
-        class: 'patos-zona',
-        estilo: 'flex:1; min-height:0; display:flex; align-items:center;' +
-                ' justify-content:center; overflow:hidden;'
-      }, lienzo);
-
-      vista.appendChild(h('div', { class: 'marcador' },
-        h('div', { class: 'dato' }, valPuntos, h('span', { class: 'etq' }, 'Puntos')),
-        h('div', { class: 'dato' }, valRonda,  h('span', { class: 'etq' }, 'Ronda')),
-        h('div', { class: 'dato' }, valTiros,  h('span', { class: 'etq' }, 'Tiros'))
-      ));
-      vista.appendChild(h('div', { class: 'centro' }, zona, aviso));
+      var zona = h('div', { class: 'patos-zona' }, lienzo);
+      vista.appendChild(zona);
 
       /* ---------------------------------------------------------------
          MODO DIAGNOSTICO
@@ -145,8 +189,8 @@
       function diagnosticar(x, y, tToque, acerto) {
         if (!panelDiag) return;
         toques++;
-        var d = pato ? Math.round(Math.sqrt((x - pato.x) * (x - pato.x) +
-                                            (y - pato.y) * (y - pato.y))) : -1;
+        var d = objetivo ? Math.round(Math.sqrt((x - objetivo.x) * (x - objetivo.x) +
+                                                (y - objetivo.y) * (y - objetivo.y))) : -1;
         panelDiag.textContent = [
           'toques recibidos : ' + toques,
           'dibujos/segundo  : ' + Math.round(1000 / Math.max(1, fotograma)),
@@ -156,25 +200,30 @@
           'fase del juego   : ' + fase,
           'tiros que quedan : ' + tiros + ' de ' + TIROS,
           'toque en         : ' + Math.round(x) + ',' + Math.round(y),
-          'pato en          : ' + (pato ? Math.round(pato.x) + ',' + Math.round(pato.y) : '-'),
-          'distancia        : ' + d + '   (perdona hasta ' + Math.round(RADIO_TIRO * zoom) + ')',
+          'doctora en       : ' + (objetivo ? Math.round(objetivo.x) + ',' + Math.round(objetivo.y) : '-'),
+          'distancia        : ' + d + '   (perdona hasta ' + RADIO_TIRO + ')',
           'resultado        : ' + (acerto ? 'ACIERTO' : 'fallo')
         ].join(SALTO);
       }
 
-      api.sub('Ronda 1' + (mejor ? '  ·  Récord ' + mejor : ''));
+      function pintarSub() {
+        api.sub('Nivel ' + nivel + (mejor ? '  ·  Récord ' + mejor : ''));
+      }
+      pintarSub();
 
       var ctx = lienzo.getContext ? lienzo.getContext('2d') : null;
-      var fondo = document.createElement('canvas');
+      var fondo = document.createElement('canvas');            // playa y sombrilla
       var fctx = fondo.getContext ? fondo.getContext('2d') : null;
-      var frente = document.createElement('canvas');          // palmeras de delante
+      var frente = document.createElement('canvas');           // palmeras y matorral
       var rctx = frente.getContext ? frente.getContext('2d') : null;
-      var escala = 1, zoom = 1;
-      var nubes = [], brillos = [], gaviotas = [], espumaDeg = null, dunaDeg = null;
+      var escala = 1;
+      var caja = { x: 0, y: 0, w: FW, h: FH };                 // donde cae la foto
+      var nubes = [], gaviotas = [], loro = null;
 
       /* ---------------------------------------------------------------
-         Medida: el lienzo ocupa todo el hueco libre y se reparte la
-         escena (cielo / mar / arena) segun lo alto que quede.
+         Medida: el lienzo ocupa toda la vista y la foto de la playa la
+         cubre entera (como background-size: cover). Lo que sobra de foto
+         se recorta por igual arriba y abajo, o a los lados.
          --------------------------------------------------------------- */
       function medir() {
         if (!ctx) return;
@@ -182,67 +231,152 @@
         if (libreAn < 40 || libreAl < 40) return;
 
         FH = Math.max(FH_MIN, Math.min(FH_MAX, FW * libreAl / libreAn));
-        HORIZONTE = FH * 0.58;
-        ORILLA    = FH * 0.775;
-        DUNA      = FH - (FH - ORILLA) * 0.42;
-        zoom = Math.max(1, Math.min(1.5, FH / 115));
-
         var an = Math.min(libreAn, libreAl * FW / FH);
         var al = an * FH / FW;
         lienzo.style.width  = Math.round(an) + 'px';
         lienzo.style.height = Math.round(al) + 'px';
 
-        var dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+        var dpr = Math.min(window.devicePixelRatio || 1, 1.5);   // mas no se nota y pesa el doble
         lienzo.width  = Math.round(an * dpr);
         lienzo.height = Math.round(al * dpr);
         escala = (an * dpr) / FW;
 
-        espumaDeg = null; dunaDeg = null;
+        var fw = 941, fh = 1672;
+        if (lista('playa')) { fw = IMG.playa.naturalWidth; fh = IMG.playa.naturalHeight; }
+        var s = Math.max(FW / fw, FH / fh);
+        caja = { w: fw * s, h: fh * s };
+        caja.x = (FW - caja.w) / 2;
+        caja.y = (FH - caja.h) / 2;
+        /* Las lineas de la escena salen de la propia foto. */
+        HORIZONTE = caja.y + caja.h * 0.637;
+        ORILLA    = caja.y + caja.h * 0.712;
+        DUNA      = caja.y + caja.h * 0.790;
+
         decorado();
+        amontonar();
+        cocerMonton();
         pintarFondo();
         pintarFrente();
       }
 
-      /** Nubes, destellos del agua y gaviotas: dependen del alto del campo. */
-      function decorado() {
-        nubes = [];
-        for (var i = 0; i < 5; i++) {
-          nubes.push({
-            x: Math.random() * FW,
-            y: 5 + Math.random() * (HORIZONTE * 0.55),
-            r: 3 + Math.random() * 4.5,
-            v: 0.25 + Math.random() * 0.5,
-            a: 0.35 + Math.random() * 0.4
-          });
+      /* ---------------------------------------------------------------
+         EL MONTON DE DINERO
+
+         Abajo en el centro hay un monton de billetes con un par de pelotas
+         encima: es de donde salen los lanzamientos. Se arma una sola vez al
+         medir (posiciones y giros fijos) para que no baile en cada cuadro, y
+         a proposito queda desordenado, como dinero apilado de cualquier
+         manera.
+         --------------------------------------------------------------- */
+      function amontonar() {
+        monton = [];
+        /* en una pantalla baja el monton se encoge: si no, se comeria media
+           escena y taparia los objetivos que vuelan bajo */
+        montonEsc = Math.max(0.45, Math.min(1, FH / 170));
+        var cx = FW / 2, base = FH + 1;
+        var i;
+
+        /* los billetes de abajo, en abanico y desparejos */
+        var sueltos = [
+          [-17,  1.4, 12.5, -0.52], [ -9.5, 3.2, 14,   0.22], [  1,   4.0, 13,  -0.14],
+          [ 10,  3.0, 13.5,  0.46], [ 17.5, 1.2, 11.5,  0.68], [ -13, -1.0, 12,  0.34],
+          [ -3,  0.2, 14.5, -0.30], [  7,  -0.6, 13,   0.12], [ 14,  -1.6, 11,  -0.44],
+          [ -7, -3.2, 12.5,  0.58], [  4,  -3.8, 13,  -0.62]
+        ];
+        for (i = 0; i < sueltos.length; i++) {
+          monton.push({ tipo: 'billete', x: cx + sueltos[i][0], y: base - sueltos[i][1],
+                        w: sueltos[i][2], giro: sueltos[i][3] });
         }
-        brillos = [];
-        for (var j = 0; j < 130; j++) {
-          var f = Math.random();                       // 0 horizonte, 1 orilla
-          var y = HORIZONTE + f * (ORILLA - HORIZONTE);
-          var ancho = 4 + f * 26;                      // el reflejo se abre hacia abajo
-          brillos.push({
-            x: 74 + (Math.random() - 0.5) * ancho,
-            y: y,
-            l: 0.6 + Math.random() * (1 + f * 3),
-            fase: Math.random() * TAU,
-            v: 1.5 + Math.random() * 3
-          });
-        }
-        gaviotas = [];
-        for (var k = 0; k < 3; k++) {
-          gaviotas.push({
-            x: Math.random() * FW,
-            y: 10 + Math.random() * (HORIZONTE * 0.4),
-            v: 1.2 + Math.random() * 1.6,
-            e: 0.9 + Math.random() * 0.6,
-            fase: Math.random() * TAU
-          });
+
+        /* y las pelotas encima, medio hundidas en el monton */
+        var bolas = [[-11.5, 5.6, 15, -0.3], [11, 5.0, 14, 0.36], [-0.5, 8.6, 20, 0.1]];
+        for (i = 0; i < bolas.length; i++) {
+          monton.push({ tipo: 'pelota', x: cx + bolas[i][0], y: base - bolas[i][1],
+                        w: bolas[i][2], giro: bolas[i][3] });
         }
       }
 
-      /* ---------------------------------------------------------------
-         Fondo fijo: cielo de tarde, sol, mar, arena y palmeras.
-         --------------------------------------------------------------- */
+      /* El monton no se mueve nunca: se pinta UNA vez en su propio lienzo y
+         despues solo se estampa. Antes eran catorce dibujos con sombra
+         desenfocada en cada cuadro, y la sombra de lienzo es de lo mas caro
+         que hay: en el totem se notaba. */
+      var MONTON_AL = 34;                  // lo que ocupa a lo alto, en mundo
+
+      function cocerMonton() {
+        montonHecho = null;
+        if (!monton.length || !escala) return;
+        var c = document.createElement('canvas');
+        c.width  = Math.max(1, Math.round(FW * escala));
+        c.height = Math.max(1, Math.round(MONTON_AL * escala));
+        var g = c.getContext('2d');
+        g.setTransform(escala, 0, 0, escala, 0, 0);
+        g.translate(0, MONTON_AL - FH);    // el monton se apoya en FH
+        for (var i = 0; i < monton.length; i++) {
+          var m = monton[i];
+          var al = alto(m.tipo, m.w);
+          g.save();
+          g.translate(m.x, m.y);
+          g.rotate(m.giro);
+          g.shadowColor = 'rgba(0,0,0,.22)';
+          g.shadowBlur = escala * 0.5;
+          g.shadowOffsetY = escala * 0.2;
+          imagen(g, m.tipo, -m.w / 2, -al / 2, m.w, al);
+          g.restore();
+        }
+        montonHecho = c;
+      }
+
+      function pintarMonton() {
+        if (!montonHecho) return;
+        /* al lanzar, el monton se hunde un poco: se nota de donde salio */
+        var k = montonEsc * (1 - sacude * 0.06);
+        ctx.save();
+        ctx.translate(FW / 2, FH);
+        ctx.scale(k, k);
+        ctx.drawImage(montonHecho, -FW / 2, -MONTON_AL, FW, MONTON_AL);
+        ctx.restore();
+      }
+
+      /** Nubes, gaviotas y loro: cruzan el cielo despacio, por detras de todo. */
+      function decorado() {
+        nubes = [];
+        for (var i = 0; i < 2; i++) {
+          nubes.push({
+            img: i ? 'nube2' : 'nube1',
+            x: Math.random() * FW,
+            y: 6 + Math.random() * (HORIZONTE * 0.35),
+            w: 24 + Math.random() * 8,
+            v: 0.5 + Math.random() * 0.5
+          });
+        }
+        gaviotas = [];
+        for (var k = 0; k < 2; k++) {
+          gaviotas.push({
+            img: k ? 'gaviota2' : 'gaviota1',
+            x: Math.random() * FW,
+            y: HORIZONTE * (0.2 + Math.random() * 0.3),
+            w: 8 + Math.random() * 3,
+            v: 2.5 + Math.random() * 2,
+            fase: Math.random() * TAU
+          });
+        }
+        loro = { x: -30 - Math.random() * 60, y: HORIZONTE * 0.25, w: 11, v: 7.5 };
+      }
+
+      /** Pinta una imagen por su nombre; si falta el alto se saca de la proporcion. */
+      function imagen(g, n, x, y, w, hh, volteoX, volteoY) {
+        if (!lista(n)) return;
+        var im = IMG[n];
+        if (hh === undefined || hh === null) hh = w * im.naturalHeight / im.naturalWidth;
+        if (!volteoX && !volteoY) { g.drawImage(im, x, y, w, hh); return; }
+        g.save();
+        g.translate(x + (volteoX ? w : 0), y + (volteoY ? hh : 0));
+        g.scale(volteoX ? -1 : 1, volteoY ? -1 : 1);
+        g.drawImage(im, 0, 0, w, hh);
+        g.restore();
+      }
+
+      /* ------------------------- Fondo fijo ------------------------- */
       function pintarFondo() {
         if (!fctx) return;
         fondo.width = lienzo.width;
@@ -250,110 +384,18 @@
         var g = fctx;
         g.setTransform(escala, 0, 0, escala, 0, 0);
         g.clearRect(0, 0, FW, FH);
-
-        /* --- cielo --- */
-        var cielo = g.createLinearGradient(0, 0, 0, HORIZONTE);
-        cielo.addColorStop(0.00, '#5E94C0');
-        cielo.addColorStop(0.38, '#9EC5DC');
-        cielo.addColorStop(0.72, '#DCD8C8');
-        cielo.addColorStop(1.00, '#F7D6A2');
-        g.fillStyle = cielo;
-        g.fillRect(0, 0, FW, HORIZONTE + 0.5);
-
-        /* --- sol y su resplandor --- */
-        var solX = 74, solY = HORIZONTE * 0.46, solR = 5.6;
-        var halo = g.createRadialGradient(solX, solY, solR * 0.6, solX, solY, solR * 6.5);
-        halo.addColorStop(0, 'rgba(255,236,190,.85)');
-        halo.addColorStop(0.35, 'rgba(250,205,130,.32)');
-        halo.addColorStop(1, 'rgba(250,205,130,0)');
-        g.fillStyle = halo;
-        g.beginPath();
-        g.arc(solX, solY, solR * 6.5, 0, TAU);
-        g.fill();
-        var disco = g.createRadialGradient(solX, solY, 0, solX, solY, solR);
-        disco.addColorStop(0, '#FFFDF3');
-        disco.addColorStop(0.7, '#FFEFC4');
-        disco.addColorStop(1, '#FBD98F');
-        g.fillStyle = disco;
-        g.beginPath();
-        g.arc(solX, solY, solR, 0, TAU);
-        g.fill();
-
-        /* --- isla lejana --- */
-        g.fillStyle = 'rgba(96,120,128,.35)';
-        g.beginPath();
-        g.moveTo(8, HORIZONTE + 0.3);
-        g.quadraticCurveTo(17, HORIZONTE - 6.5, 26, HORIZONTE + 0.3);
-        g.closePath();
-        g.fill();
-        g.beginPath();
-        g.moveTo(20, HORIZONTE + 0.3);
-        g.quadraticCurveTo(26, HORIZONTE - 3.6, 33, HORIZONTE + 0.3);
-        g.closePath();
-        g.fill();
-
-        /* --- mar --- */
-        var mar = g.createLinearGradient(0, HORIZONTE, 0, ORILLA);
-        mar.addColorStop(0.00, '#8FB9C9');
-        mar.addColorStop(0.12, '#4E8CA8');
-        mar.addColorStop(0.40, '#2F7EA0');
-        mar.addColorStop(0.78, '#4FA8AE');
-        mar.addColorStop(1.00, '#8FD3CE');
-        g.fillStyle = mar;
-        g.fillRect(0, HORIZONTE, FW, ORILLA - HORIZONTE + 0.5);
-
-        /* linea del horizonte, con la luz del sol encima */
-        g.fillStyle = 'rgba(255,238,205,.55)';
-        g.fillRect(0, HORIZONTE - 0.35, FW, 0.7);
-
-        /* camino de luz del sol sobre el agua */
-        var camino = g.createLinearGradient(0, HORIZONTE, 0, ORILLA);
-        camino.addColorStop(0, 'rgba(255,236,190,.55)');
-        camino.addColorStop(1, 'rgba(255,236,190,0)');
-        g.fillStyle = camino;
-        g.beginPath();
-        g.moveTo(solX - 3, HORIZONTE);
-        g.lineTo(solX + 3, HORIZONTE);
-        g.lineTo(solX + 17, ORILLA);
-        g.lineTo(solX - 17, ORILLA);
-        g.closePath();
-        g.fill();
-
-        /* --- arena --- */
-        var arena = g.createLinearGradient(0, ORILLA, 0, FH);
-        arena.addColorStop(0.00, '#D9C6A0');
-        arena.addColorStop(0.25, '#EADCBB');
-        arena.addColorStop(1.00, '#D7C193');
-        g.fillStyle = arena;
-        g.fillRect(0, ORILLA - 0.5, FW, FH - ORILLA + 1);
-
-        /* arena mojada justo en la orilla */
-        var mojada = g.createLinearGradient(0, ORILLA - 0.5, 0, ORILLA + (FH - ORILLA) * 0.22);
-        mojada.addColorStop(0, 'rgba(120,150,140,.45)');
-        mojada.addColorStop(1, 'rgba(120,150,140,0)');
-        g.fillStyle = mojada;
-        g.fillRect(0, ORILLA - 0.5, FW, (FH - ORILLA) * 0.25);
-
-        /* granos de arena */
-        for (var i = 0; i < 420; i++) {
-          var ax = Math.random() * FW;
-          var ay = ORILLA + Math.random() * (FH - ORILLA);
-          g.fillStyle = Math.random() < 0.5 ? 'rgba(255,255,255,.28)' : 'rgba(140,115,80,.18)';
-          g.fillRect(ax, ay, 0.35, 0.35);
+        if (lista('playa')) {
+          g.drawImage(IMG.playa, caja.x, caja.y, caja.w, caja.h);
+        } else {                                       // mientras llega la foto
+          g.fillStyle = '#3FA9E4'; g.fillRect(0, 0, FW, HORIZONTE);
+          g.fillStyle = '#2FB5D8'; g.fillRect(0, HORIZONTE, FW, ORILLA - HORIZONTE);
+          g.fillStyle = '#F1D28C'; g.fillRect(0, ORILLA, FW, FH - ORILLA);
         }
-
-        /* --- viñeta, para que la escena no quede plana --- */
-        var vin = g.createRadialGradient(FW / 2, FH * 0.45, FW * 0.35, FW / 2, FH * 0.5, FW * 0.85);
-        vin.addColorStop(0, 'rgba(60,40,20,0)');
-        vin.addColorStop(1, 'rgba(60,40,20,.20)');
-        g.fillStyle = vin;
-        g.fillRect(0, 0, FW, FH);
+        /* sombrilla clavada en la arena, a la derecha */
+        imagen(g, 'sombrilla', FW * 0.80, ORILLA - 3, 21);
       }
 
-      /* ---------------------------------------------------------------
-         Primer plano: las palmeras nacen en la arena de delante y
-         enmarcan la escena, como en una foto de playa.
-         --------------------------------------------------------------- */
+      /* ------------------------- Primer plano ------------------------- */
       function pintarFrente() {
         if (!rctx) return;
         frente.width = lienzo.width;
@@ -362,113 +404,139 @@
         g.setTransform(escala, 0, 0, escala, 0, 0);
         g.clearRect(0, 0, FW, FH);
 
-        /* Altas y ladeadas hacia fuera: la copa asoma por las esquinas y
-           deja libre el centro, que es por donde vuelan los patos. */
-        var alto = (DUNA - HORIZONTE) * 1.2;
-        sombraArena(g, 5, DUNA + 3, 7);
-        sombraArena(g, 96, DUNA + 1.5, 5);
-        palmera(g, 5, DUNA + 3, alto);
-        palmera(g, 96, DUNA + 1.5, alto * 0.8);
-        sombrilla(g, 78, DUNA + 5.5, Math.min(2.2, (FH - ORILLA) * 0.055));
-      }
+        /* Hojas de palmera colgando por las dos esquinas de arriba... */
+        var w = 36;
+        imagen(g, 'palmera', -3, -3, w);
+        imagen(g, 'palmera', FW + 3 - w, -3, w, undefined, true);
 
-      function sombraArena(g, x, y, r) {
-        g.fillStyle = 'rgba(120,95,55,.18)';
-        g.beginPath();
-        g.ellipse(x + 2, y + 0.6, r, r * 0.28, 0, 0, TAU);
-        g.fill();
-      }
-
-      /** Sombrilla de playa, para dar profundidad a la arena. */
-      function sombrilla(g, x, base, k) {
-        g.strokeStyle = '#B9A07C';
-        g.lineWidth = 0.45 * k;
-        g.beginPath();
-        g.moveTo(x, base);
-        g.lineTo(x - 0.6 * k, base - 6.4 * k);
-        g.stroke();
-
-        for (var i = 0; i < 6; i++) {
-          g.fillStyle = i % 2 ? '#F6EBDA' : '#C0614F';
-          g.beginPath();
-          g.moveTo(x - 0.6 * k, base - 6.4 * k);
-          var a1 = Math.PI + (i / 6) * Math.PI;
-          var a2 = Math.PI + ((i + 1) / 6) * Math.PI;
-          g.lineTo(x - 0.6 * k + Math.cos(a1) * 4.6 * k, base - 6.4 * k - Math.sin(a1) * 1.5 * k);
-          g.quadraticCurveTo(
-            x - 0.6 * k + Math.cos((a1 + a2) / 2) * 5 * k,
-            base - 6.4 * k - Math.sin((a1 + a2) / 2) * 1.5 * k - 0.5 * k,
-            x - 0.6 * k + Math.cos(a2) * 4.6 * k,
-            base - 6.4 * k - Math.sin(a2) * 1.5 * k);
-          g.closePath();
-          g.fill();
+        /* ...y las mismas hojas del reves hacen de matorral abajo. Una sola
+           queda rala (la hoja se abre hacia el centro y deja huecos), asi que
+           van tres capas por lado, a distinto tamano, que se tapan los huecos
+           entre si. Medido: una capa cubre el 27% de la esquina, tres el 43%. */
+        var capas = [[-2, 2, 40], [10, 9, 30], [-6, 14, 36]];   // [x, cuanto asoma por abajo, ancho]
+        for (var i = 0; i < capas.length; i++) {
+          var cx = capas[i][0], cy = capas[i][1], cw = capas[i][2], ch = alto('palmera', cw);
+          imagen(g, 'palmera', cx, FH + cy - ch, cw, undefined, false, true);
+          imagen(g, 'palmera', FW - cx - cw, FH + cy - ch, cw, undefined, true, true);
         }
       }
 
-      /** Palmera con el tronco curvado y las hojas abiertas. */
-      function palmera(g, x, base, alto) {
-        var k = alto / 26;
-        var inclina = x > FW / 2 ? 1 : -1;      // se inclina hacia el borde mas cercano
+      /* ------------------------- Texto ------------------------- */
+      function texto(t, x, y, tam, alinea, peso, color) {
+        ctx.font = (peso || 700) + ' ' + tam + 'px ' + FUENTE;
+        ctx.textAlign = alinea || 'left';
+        ctx.textBaseline = 'middle';
+        /* la sombra va en pixeles de pantalla, no de escena */
+        ctx.shadowColor = 'rgba(0,0,0,.45)';
+        ctx.shadowBlur = 0;                       // sin desenfoque: se pinta cada cuadro
+        ctx.shadowOffsetY = escala * 0.15;
+        ctx.fillStyle = color || '#FFFFFF';
+        ctx.fillText(t, x, y);
+        ctx.shadowColor = 'rgba(0,0,0,0)';
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetY = 0;
+      }
 
-        g.strokeStyle = '#8A6A47';
-        g.lineCap = 'round';
-        g.lineWidth = 1.5 * k;
+      function redondo(g, x, y, w, hh, r) {
         g.beginPath();
-        g.moveTo(x, base);
-        g.quadraticCurveTo(x + inclina * 2.5, base - alto * 0.55, x + inclina * 6, base - alto);
-        g.stroke();
-        g.strokeStyle = 'rgba(255,235,200,.35)';   // brillo del sol en el tronco
-        g.lineWidth = 0.5 * k;
-        g.beginPath();
-        g.moveTo(x - 0.4, base);
-        g.quadraticCurveTo(x + inclina * 2.1, base - alto * 0.55, x + inclina * 5.6, base - alto);
-        g.stroke();
+        g.moveTo(x + r, y);
+        g.arcTo(x + w, y, x + w, y + hh, r);
+        g.arcTo(x + w, y + hh, x, y + hh, r);
+        g.arcTo(x, y + hh, x, y, r);
+        g.arcTo(x, y, x + w, y, r);
+        g.closePath();
+      }
 
-        var cx = x + inclina * 6, cy = base - alto;
-        var hojas = 7;
-        for (var i = 0; i < hojas; i++) {
-          var ang = -Math.PI + (i / (hojas - 1)) * Math.PI;
-          var largo = alto * (0.34 + Math.random() * 0.14);
-          var px = cx + Math.cos(ang) * largo;
-          var py = cy + Math.sin(ang) * largo * 0.62 + 1.2 * k;
-          var deg = g.createLinearGradient(cx, cy, px, py);
-          deg.addColorStop(0, '#3F6B4E');
-          deg.addColorStop(1, '#6FA173');
-          g.fillStyle = deg;
-          g.beginPath();
-          g.moveTo(cx, cy);
-          g.quadraticCurveTo((cx + px) / 2, (cy + py) / 2 - largo * 0.34, px, py);
-          g.quadraticCurveTo((cx + px) / 2, (cy + py) / 2 + largo * 0.16, cx, cy + 1.1 * k);
-          g.closePath();
-          g.fill();
-        }
-        g.fillStyle = '#6B4F33';
-        g.beginPath();
-        g.arc(cx, cy + 0.6 * k, 1.1 * k, 0, TAU);
-        g.fill();
+      function avisar(t, seg) { mensaje.texto = t; mensaje.t = seg || 1.6; }
+
+      function cuatroCifras(n) {
+        return n < 10000 ? ('0000' + n).slice(-4) : String(n);
       }
 
       /* ------------------------- Marcador ------------------------- */
       function pintarHud() {
-        valPuntos.textContent = puntos;
-        valRonda.textContent = ronda;
-        var t = '';
-        for (var i = 0; i < TIROS; i++) t += (i < tiros ? '●' : '○');
-        valTiros.textContent = t;
+        var m = 3.5, y0 = 3.5, i;
+
+        /* puntaje, con la copa */
+        imagen(ctx, 'copa', m, y0 + 0.4, 8);
+        texto('PUNTAJE', m + 9.6, y0 + 2.6, 2.4, 'left', 700, 'rgba(255,255,255,.92)');
+        texto(cuatroCifras(puntos), m + 9.6, y0 + 7.3, 5.6, 'left', 800);
+
+        /* nivel: un punto por nivel, llenos los ya alcanzados */
+        texto('NIVEL ' + nivel, FW / 2, y0 + 2.6, 2.8, 'center', 700);
+        var d = 3.8, sep = 1.3;
+        var tot = NIVELES * d + (NIVELES - 1) * sep;
+        var x = (FW - tot) / 2;
+        for (i = 0; i < NIVELES; i++) {
+          imagen(ctx, i < nivel ? 'nivelLleno' : 'nivelVacio', x + i * (d + sep), y0 + 5.4, d);
+        }
+
+        /* vidas: conchas, apagadas las perdidas */
+        texto('VIDAS', FW - m, y0 + 2.6, 2.4, 'right', 700, 'rgba(255,255,255,.92)');
+        var cw = 5.6, cs = 1.2;
+        for (i = 0; i < VIDAS; i++) {
+          var cx = FW - m - cw - (VIDAS - 1 - i) * (cw + cs);
+          if (i >= vidas) ctx.globalAlpha = 0.3;
+          imagen(ctx, 'vida', cx, y0 + 5.4, cw);
+          ctx.globalAlpha = 1;
+        }
+
+        /* billetes: uno por tiro, en abanico, apagados los ya lanzados */
+        var kw = 7.2, kh = alto('billete', kw), ky = FH - m - kh;
+        for (i = 0; i < TIROS; i++) {
+          if (i >= tiros) ctx.globalAlpha = 0.28;
+          imagen(ctx, 'billete', m + i * (kw - 1.6), ky, kw);
+          ctx.globalAlpha = 1;
+        }
+        texto('BILLETES', m + TIROS * (kw - 1.6) + 2.4, ky + kh / 2, 2.4, 'left', 700);
+
+        /* tiempo: la barra va con el cronometro de arriba */
+        var bw = 27, bh = alto('barraMarco', bw);
+        var bx = FW - m - bw, by = FH - m - bh;
+        var poco = !!cuenta && cuenta.queda() <= 15;
+        texto('TIEMPO', FW - m, by - 2.6, 2.4, 'right', 700, poco ? '#FFC7BA' : '#FFFFFF');
+        imagen(ctx, 'barraMarco', bx, by, bw);
+        pintarRelleno(bx + bw * 0.035, by + bh * 0.238, bw * 0.928, bh * 0.548, barra, poco);
       }
 
-      /* ------------------------- Ronda y patos ------------------------- */
-      function necesarios() { return Math.min(6, 3 + Math.ceil(ronda / 2)); }
+      /** El relleno amarillo, cortado a la fraccion que queda y con las puntas redondas. */
+      function pintarRelleno(x, y, wTot, hTot, f, parpadea) {
+        if (!lista('barraRelleno') || f <= 0) return;
+        var im = IMG.barraRelleno, iw = im.naturalWidth, ih = im.naturalHeight;
+        var w = wTot * Math.max(0, Math.min(1, f));
+        if (parpadea) ctx.globalAlpha = 0.55 + 0.45 * Math.abs(Math.sin(tiempo * 6));
+        var tapa = ih / 2;                 // pixeles de imagen que forman cada punta
+        var tapaU = hTot / 2;              // y lo que miden en la escena
+        if (w <= tapaU * 2) {
+          ctx.drawImage(im, 0, 0, iw, ih, x, y, w, hTot);
+        } else {
+          ctx.drawImage(im, 0, 0, tapa, ih, x, y, tapaU, hTot);
+          ctx.drawImage(im, tapa, 0, iw - 2 * tapa, ih, x + tapaU, y, w - 2 * tapaU, hTot);
+          ctx.drawImage(im, iw - tapa, 0, tapa, ih, x + w - tapaU, y, tapaU, hTot);
+        }
+        ctx.globalAlpha = 1;
+      }
 
-      function empezarRonda() {
+      function pintarMensaje() {
+        if (mensaje.t <= 0 || !mensaje.texto) return;
+        ctx.globalAlpha = Math.min(1, mensaje.t / 0.35);
+        ctx.font = '700 3.2px ' + FUENTE;
+        var w = ctx.measureText(mensaje.texto).width + 8, hh = 6.4;
+        var x = (FW - w) / 2, y = 24;
+        ctx.fillStyle = 'rgba(20,40,70,.55)';
+        redondo(ctx, x, y, w, hh, 3.2);
+        ctx.fill();
+        texto(mensaje.texto, FW / 2, y + hh / 2, 3.2, 'center', 700);
+        ctx.globalAlpha = 1;
+      }
+
+      /* ------------------------- Nivel y doctoras ------------------------- */
+      function empezarNivel() {
         fase = 'intro';
-        indice = 0; aciertos = 0; tiros = TIROS;
-        marcas = [];
-        pato = null;
-        pintarHud();
-        api.sub('Ronda ' + ronda + (mejor ? '  ·  Récord ' + mejor : ''));
-        aviso.textContent = 'Ronda ' + ronda + ': acierta ' + necesarios() +
-                            ' de ' + PATOS_RONDA + ', 3 tiros por pato';
+        indice = 0; tiros = TIROS;
+        objetivo = null;
+        pintarSub();
+        avisar('Nivel ' + nivel + ': ¡atrapa a la doctora!', 1.7);
         perro.estado = 'busca'; perro.t = 0;
         api.luego(function () {
           perro.estado = 'oculto';
@@ -476,37 +544,34 @@
         }, 1700);
       }
 
+      /* El nivel solo se pasa ATRAPANDO a sus doctoras: la que se escapa
+         cuesta una vida y vuelve a salir otra en su lugar, no cuenta. */
       function soltar() {
         if (terminado) return;
-        if (indice >= PATOS_RONDA) { finRonda(); return; }
-        indice++;
+        if (indice >= POR_NIVEL) { finNivel(); return; }
         tiros = TIROS;
-        pato = nuevoPato();
+        objetivo = nuevoObjetivo();
         fase = 'volando';
-        cuac();
-        pintarHud();
-        aviso.textContent = 'Pato ' + indice + ' de ' + PATOS_RONDA;
+        aparece();
+        avisar('Doctora ' + (indice + 1) + ' de ' + POR_NIVEL, 1.1);
       }
 
-      function nuevoPato() {
-        var tipo = BOLSA[entero(0, BOLSA.length - 1)];
-        /* Cada pato tiene su propio genio: unos van mas rapidos que otros. */
-        var vel = Math.min(70, 42 + ronda * 5) * (0.9 + Math.random() * 0.35);
+      function nuevoObjetivo() {
+        /* Cada una tiene su propio genio: unas van mas rapidas que otras. */
+        var vel = Math.min(70, 40 + nivel * 5) * (0.9 + Math.random() * 0.35);
         /* Sale siempre hacia arriba (esta al ras del agua) pero con mucho abanico. */
         var ang = -Math.PI / 2 + (Math.random() * 1.7 - 0.85);
         return {
-          tipo: tipo,
           x: entero(22, 78),
-          y: ORILLA - 5,
+          y: ORILLA - 10,
           vx: Math.cos(ang) * vel,
           vy: Math.sin(ang) * vel,
           base: vel,
-          dir: Math.cos(ang) >= 0 ? 1 : -1,
-          ala: 0,
-          giro: 0,
+          fase: Math.random() * TAU,
+          t: 0,
           estado: 'vuela',
-          rastro: [],                            // por donde ha pasado hace poco
-          vida: Math.max(2.4, 5.0 - ronda * 0.45), // segundos antes de largarse
+          rastro: [],                              // por donde ha pasado hace poco
+          vida: Math.max(2.6, 5.2 - nivel * 0.45),  // segundos antes de largarse
           cambio: 0.45
         };
       }
@@ -519,34 +584,29 @@
       function tocar(x, y, tToque) {
         if (terminado) return;
 
-        /* Sin tiros, o entre un pato y el siguiente. Antes esto no hacia
-           NADA: ni sonido ni marca. El cliente cree que la pantalla no
-           responde y aporrea. Ahora al menos se oye que no quedan tiros. */
-        if (fase !== 'volando' || !pato || tiros <= 0) {
+        /* Sin billetes, o entre una doctora y la siguiente: al menos se oye
+           un clic, para que no parezca que la pantalla no responde. */
+        if (fase !== 'volando' || !objetivo || tiros <= 0) {
           App.tono(110, 0.05, 0.07, 'square');
           diagnosticar(x, y, tToque, false);
           return;
         }
 
         tiros--;
-        disparos.push({ x: x, y: y, t: 0 });
-        App.tono(150, 0.06, 0.12, 'square');
-        pintarHud();
 
-        var margen = RADIO_TIRO * zoom;
+        var margen = RADIO_TIRO;
 
         /* 1. Donde esta ahora mismo. */
-        var dio = cerca(x, y, pato.x, pato.y, margen);
+        var dio = cerca(x, y, objetivo.x, objetivo.y, margen);
 
         if (!dio) {
           if (tToque !== null && tToque !== undefined) {
-            /* 2. Por donde paso el pato alrededor del instante del toque. Se
-               mira el TRAZO entre un dibujo y el siguiente, no los puntos
-               sueltos: en una pantalla lenta el pato salta y entre dos puntos
+            /* 2. Por donde paso alrededor del instante del toque. Se mira el
+               TRAZO entre un dibujo y el siguiente, no los puntos sueltos:
+               en una pantalla lenta la doctora salta y entre dos puntos
                queda un hueco por el que se cuelan los aciertos buenos. La
                ventana crece con el tiempo de fotograma, que es la
-               incertidumbre minima: no se puede saber donde estaba el pato
-               con mas precision que un dibujo. */
+               incertidumbre minima. */
             dio = enElTrazo(x, y, margen, tToque, VENTANA_TOQUE * 1000 + fotograma);
             if (!dio) calibrar(x, y, tToque, margen);
           } else {
@@ -556,19 +616,57 @@
         }
 
         diagnosticar(x, y, tToque, dio);
+        lanzar(x, y, dio);
+      }
 
-        if (dio) { acertar(); return; }
-        if (tiros === 0) escapar('Sin tiros: se escapó');
+      /* ---------------------------------------------------------------
+         La pelota de billetes sale desde abajo hacia donde se toco. El
+         acierto ya esta decidido (arriba, con la hora real del toque): la
+         pelota solo lo cuenta. Si dio, la doctora queda fijada y la pelota
+         la persigue, para que el golpe caiga encima aunque siga planeando.
+         --------------------------------------------------------------- */
+      function lanzar(x, y, dio) {
+        var ox = FW / 2 + (x - FW / 2) * 0.15;
+        pelotas.push({
+          x0: ox, y0: FH - 7 * montonEsc, x: ox, y: FH - 7 * montonEsc,
+          dx: x, dy: y, t: 0, dur: 0.3, f: 0,
+          giro: Math.random() * TAU, sentido: x < FW / 2 ? -1 : 1,
+          sigue: dio ? objetivo : null, acierto: dio, ultimo: tiros === 0
+        });
+        if (dio) { objetivo.estado = 'fijada'; fase = 'atrapada'; }
+        sacude = 1;
+        if (App.ruido) App.ruido(0.22, 0.22, 300, 3600);      // silbido al salir
+        App.tono(240, 0.08, 0.10, 'triangle');
+      }
+
+      /** La pelota llega: o da en la doctora o cae donde se toco. */
+      function llegar(b) {
+        if (terminado) return;
+        disparos.push({ x: b.dx, y: b.dy, t: 0 });
+        if (b.acierto && objetivo && objetivo.estado === 'fijada') { acertar(); return; }
+        App.tono(150, 0.06, 0.10, 'square');
+        if (b.ultimo && objetivo && objetivo.estado === 'vuela') escapar('Sin billetes: se escapó');
+      }
+
+      /** Caja registradora: el clic del cajon y el timbre, con monedas. */
+      function dinero() {
+        if (App.ruido) App.ruido(0.06, 0.3, 5000, 1500);
+        App.tono(2093, 0.28, 0.16, 'sine');
+        api.luego(function () { App.tono(2637, 0.45, 0.14, 'sine'); }, 70);
+        api.luego(function () { App.tono(3136, 0.12, 0.08, 'triangle'); }, 180);
+        api.luego(function () { App.tono(3520, 0.10, 0.07, 'triangle'); }, 260);
+        api.luego(function () { App.tono(2794, 0.14, 0.06, 'triangle'); }, 340);
       }
 
       /* Recorre el rastro al reves y mira si el toque cae sobre el CAMINO que
-         siguio el pato dentro de la franja de tiempo pedida. Con devolverHora
-         devuelve el instante del tramo acertado (lo usa el autocalibrado). */
+         siguio la doctora dentro de la franja de tiempo pedida. Con
+         devolverHora devuelve el instante del tramo acertado (lo usa el
+         autocalibrado). */
       function enElTrazo(x, y, margen, centro, ventana, devolverHora) {
-        var puntos = pato.rastro;
-        var b = { x: pato.x, y: pato.y, tr: ultimo };      // posicion de ahora
-        for (var i = puntos.length - 1; i >= 0; i--) {
-          var a = puntos[i];
+        var puntosRastro = objetivo.rastro;
+        var b = { x: objetivo.x, y: objetivo.y, tr: ultimo };      // posicion de ahora
+        for (var i = puntosRastro.length - 1; i >= 0; i--) {
+          var a = puntosRastro[i];
           if (a.tr > centro + ventana) { b = a; continue; }
           if (b.tr < centro - ventana) break;
           if (cercaTramo(x, y, a, b, margen)) {
@@ -596,31 +694,23 @@
          del cristal y del monitor. Pero se puede DEDUCIR de como falla la
          gente, sin que nadie tenga que medir nada a mano.
 
-         Cuando un tiro falla pero cae justo encima del pato en OTRO instante
-         del rastro, es que el cliente apunto bien y lo que esta mal es
-         nuestra idea del retraso. La diferencia entre los dos instantes es el
-         error, y se corrige un poco cada vez.
+         Cuando un tiro falla pero cae justo encima de la doctora en OTRO
+         instante del rastro, es que el cliente apunto bien y lo que esta mal
+         es nuestra idea del retraso. La diferencia entre los dos instantes es
+         el error, y se corrige un poco cada vez.
 
-         Tres seguros para que esto no ablande el juego:
-           - Solo aprende de tiros que caen ENCIMA del pato. Tocar al tuntun
-             no ensena nada.
-           - Nunca convierte el fallo en acierto: el tiro fallado, fallado se
-             queda. Solo afina el reloj para los siguientes.
-           - Corrige despacio (LAG_PASO) y con tope (LAG_MAXIMO), asi que
-             aunque alguien se empene no puede estirarlo sin limite.
-           - Y sobre todo: solo aprende si los fallos SE PARECEN entre si. El
-             retraso de una pantalla es siempre el mismo; tocar al tuntun da
-             fallos dispersos. Probado con 300 toques al azar: no aprende nada.
-
-         En la practica casi nunca hace falta: con el valor de fabrica (60 ms)
-         un cliente que apunta bien acierta igual en paneles de 60, 150 y hasta
-         220 ms. Esto es solo la red para una pantalla excepcionalmente lenta.
+         Seguros para que esto no ablande el juego:
+           - Solo aprende de tiros que caen ENCIMA. Tocar al tuntun no ensena.
+           - Nunca convierte el fallo en acierto: solo afina el reloj.
+           - Corrige despacio (LAG_PASO) y con tope (LAG_MAXIMO).
+           - Solo aprende si los fallos SE PARECEN entre si. El retraso de una
+             pantalla es siempre el mismo; tocar al tuntun da fallos dispersos.
          --------------------------------------------------------------- */
       var fallos = [];              // errores de los ultimos tiros, para decidir
 
       function calibrar(x, y, tToque, margen) {
         var hora = enElTrazo(x, y, margen, ultimo, INDULGENCIA * 1000, true);
-        if (hora === null) return;                 // no apunto al pato
+        if (hora === null) return;                 // no apunto a la doctora
 
         var error = tToque - hora;                 // ms; + : ibamos tarde
         if (error < -LAG_MAXIMO * 1000 || error > LAG_MAXIMO * 1000) return;
@@ -630,11 +720,6 @@
         if (fallos.length < LAG_MINIMO) return;    // pocos datos para decidir
 
         var orden = fallos.slice().sort(function (a, b) { return a - b; });
-
-        /* Aqui esta el filtro que impide ablandar el juego: un retraso de
-           pantalla es SIEMPRE el mismo, asi que los fallos se parecen entre
-           si. Tocar al tuntun da fallos dispersos. Si no se parecen, no se
-           aprende nada. */
         if (orden[orden.length - 1] - orden[0] > LAG_DISPERSION * 1000) return;
 
         LAG_PANTALLA += (orden[Math.floor(orden.length / 2)] / 1000) * LAG_PASO;
@@ -643,39 +728,42 @@
         apunte('calibrado', Math.round(LAG_PANTALLA * 1000));
       }
 
+      /* Como la doctora va de cuerpo entero, el margen no es un circulo sino
+         una elipse: igual de ancha que antes y ALARGA veces mas alta, para que
+         tocarle la cabeza o los pies cuente como tocarla. */
       function cerca(x, y, px, py, margen) {
-        var dx = x - px, dy = y - py;
+        var dx = x - px, dy = (y - py) / ALARGA;
         return dx * dx + dy * dy <= margen * margen;
       }
 
       function acertar() {
-        aciertos++;
-        marcas.push(true);
-        puntos += pato.tipo.puntos + tiros * 25;     // premio por acertar pronto
-        pintarHud();
-        api.sonar('bien');
-        soltarPlumas(pato);
-
-        pato.estado = 'tocado';
-        pato.vx = 0;
-        pato.vy = 30;
-        pato.giro = 0;
-        fase = 'cayendo';
-        aviso.textContent = '¡Tocado! +' + (pato.tipo.puntos + tiros * 25);
+        var gana = 100 + tiros * 25 + (nivel - 1) * 20;   // premio por acertar pronto
+        puntos += gana;
+        indice++;
+        dinero();
+        soltarChispas(objetivo);
+        soltarBilletes(objetivo);
+        letreros.push({ x: objetivo.x, y: objetivo.y - ALTO_DRA * 0.58, texto: '+' + gana, t: 0 });
+        objetivo.estado = 'tocado';
+        objetivo.t = 0;
+        objetivo.vx = 0; objetivo.vy = 0;
+        fase = 'atrapada';
+        avisar('¡Atrapada! +' + gana, 1.2);
       }
 
       function escapar(texto) {
-        marcas.push(false);
-        pato.estado = 'escapa';
-        pato.vx *= 0.4;
-        pato.vy = -58;
+        if (!objetivo || objetivo.estado !== 'vuela') return;
+        vidas--;
+        objetivo.estado = 'escapa';
+        objetivo.vx *= 0.4;
+        objetivo.vy = -58;
         fase = 'escapa';
         api.sonar('mal');
-        aviso.textContent = texto || '¡Se escapó!';
+        avisar((texto || '¡Se escapó!') + (vidas > 0 ? '' : '  ·  sin vidas'), 1.6);
       }
 
       function siguiente(conPerro) {
-        pato = null;
+        objetivo = null;
         if (conPerro) {
           perro.estado = 'rie'; perro.t = 0;
           api.luego(function () { perro.estado = 'oculto'; soltar(); }, 1500);
@@ -684,34 +772,31 @@
         }
       }
 
-      function finRonda() {
-        fase = 'ronda';
-        pato = null;
-        if (aciertos >= necesarios()) {
-          puntos += 150 * ronda;
-          pintarHud();
-          api.sonar('gana');
-          aviso.textContent = '¡Ronda ' + ronda + ' superada!';
-          perro.estado = 'trofeo'; perro.t = 0; perro.patos = Math.min(2, aciertos);
-          api.luego(function () {
-            perro.estado = 'oculto';
-            ronda++;
-            empezarRonda();
-          }, 2300);
-        } else {
-          acabar();
-        }
+      function finNivel() {
+        fase = 'nivel';
+        objetivo = null;
+        puntos += 150 * nivel;
+        api.sonar('gana');
+        avisar('¡Nivel ' + nivel + ' superado!  +' + (150 * nivel), 2.2);
+        perro.estado = 'trofeo'; perro.t = 0;
+        api.luego(function () {
+          perro.estado = 'oculto';
+          if (nivel >= NIVELES) { acabar('victoria'); return; }
+          nivel++;
+          empezarNivel();
+        }, 1600);
       }
 
-      function acabar(porTiempo) {
+      /** motivo: 'tiempo' | 'vidas' | 'victoria' */
+      function acabar(motivo) {
         if (terminado) return;
         terminado = true;
         fase = 'fin';
-        if (cuenta && !porTiempo) cuenta.parar();
-        perro.estado = porTiempo ? 'busca' : 'rie'; perro.t = 0;
-        aviso.textContent = porTiempo
-          ? 'Tiempo cumplido'
-          : 'Necesitabas ' + necesarios() + ' patos y cazaste ' + aciertos;
+        if (cuenta && motivo !== 'tiempo') cuenta.parar();
+        perro.estado = motivo === 'victoria' ? 'trofeo' : (motivo === 'tiempo' ? 'busca' : 'rie');
+        perro.t = 0;
+        avisar(motivo === 'tiempo' ? 'Tiempo cumplido'
+             : (motivo === 'victoria' ? '¡Los ' + NIVELES + ' niveles!' : 'Sin vidas'), 3);
         if (puntos > mejor) {
           mejor = puntos;
           try { localStorage.setItem('jb_patos', String(mejor)); } catch (e) {}
@@ -720,76 +805,111 @@
         api.luego(function () {
           api.fin({
             sello: '✦',
-            titulo: porTiempo ? '¡Se acabó el tiempo!'
-                  : (ronda >= 3 ? '¡Buena puntería!' : 'Fin de la partida'),
-            premio: ronda >= OBJETIVO ? premio() : null,
-            mensaje: ronda >= 3
+            titulo: motivo === 'tiempo' ? '¡Se acabó el tiempo!'
+                  : (motivo === 'victoria' ? '¡Puntería perfecta!'
+                  : (nivel >= OBJETIVO ? '¡Buena puntería!' : 'Fin de la partida')),
+            premio: nivel >= OBJETIVO ? premio() : null,
+            mensaje: nivel >= OBJETIVO
               ? 'Vista y pulso de sobra. ¿Vas a por el récord?'
-              : 'Los patos vuelan rápido. ¿Lo intentas otra vez?',
+              : 'La doctora vuela rápido. ¿Lo intentas otra vez?',
             datos: [
               { val: puntos, etq: 'Puntos' },
-              { val: ronda, etq: 'Ronda' },
+              { val: nivel, etq: 'Nivel' },
               { val: mejor, etq: 'Récord' }
             ]
           });
         }, 1400);
       }
 
-      function cuac() {
-        App.tono(430, 0.09, 0.10, 'sawtooth');
-        api.luego(function () { App.tono(330, 0.10, 0.09, 'sawtooth'); }, 95);
+      function aparece() {
+        App.tono(620, 0.07, 0.07, 'triangle');
+        api.luego(function () { App.tono(830, 0.08, 0.06, 'triangle'); }, 80);
       }
 
       /* ------------------------- Movimiento ------------------------- */
       function paso(dt) {
         tiempo += dt;
-
         var i;
+
         for (i = 0; i < nubes.length; i++) {
           nubes[i].x += nubes[i].v * dt;
-          if (nubes[i].x - nubes[i].r * 2.6 > FW) nubes[i].x = -nubes[i].r * 2.6;
+          if (nubes[i].x > FW + 4) nubes[i].x = -nubes[i].w - 4;
         }
         for (i = 0; i < gaviotas.length; i++) {
-          gaviotas[i].x += gaviotas[i].v * dt;
-          if (gaviotas[i].x > FW + 4) gaviotas[i].x = -4;
+          var g = gaviotas[i];
+          g.x += g.v * dt;
+          if (g.x > FW + 12) {
+            g.x = -12 - Math.random() * 40;
+            g.y = HORIZONTE * (0.2 + Math.random() * 0.3);
+          }
+        }
+        if (loro) {
+          loro.x += loro.v * dt;
+          if (loro.x > FW + 16) loro.x = -16 - Math.random() * 120;
         }
 
         if (perro.estado !== 'oculto') perro.t += dt;
         perro.alto += ((perro.estado === 'oculto' ? 0 : 1) - perro.alto) * Math.min(1, dt * 7);
 
-        if (pato) moverPato(dt);
+        if (objetivo) moverObjetivo(dt);
+
+        if (mensaje.t > 0) mensaje.t -= dt;
+        sacude = Math.max(0, sacude - dt / 0.22);
+
+        for (i = pelotas.length - 1; i >= 0; i--) {
+          var b = pelotas[i];
+          b.t += dt;
+          if (b.sigue) { b.dx = b.sigue.x; b.dy = b.sigue.y; }
+          var fb = Math.min(1, b.t / b.dur);
+          var eb = 1 - (1 - fb) * (1 - fb);                 // sale rapido y llega suave
+          b.x = b.x0 + (b.dx - b.x0) * eb;
+          b.y = b.y0 + (b.dy - b.y0) * eb - Math.sin(fb * Math.PI) * 6;   // con comba
+          b.giro += dt * 9 * b.sentido;
+          b.f = fb;
+          if (fb >= 1) { pelotas.splice(i, 1); llegar(b); }
+        }
+        for (i = billetes.length - 1; i >= 0; i--) {
+          var bi = billetes[i];
+          bi.t += dt;
+          bi.vy += 22 * dt;
+          bi.vy *= 0.985;                                    // el aire los frena
+          bi.x += (bi.vx + Math.sin(bi.t * 6 + bi.giro) * 4) * dt;
+          bi.y += bi.vy * dt;
+          bi.giro += bi.vgiro * dt;
+          if (bi.t > bi.vida) billetes.splice(i, 1);
+        }
 
         for (i = disparos.length - 1; i >= 0; i--) {
           disparos[i].t += dt;
           if (disparos[i].t > 0.45) disparos.splice(i, 1);
         }
-        for (i = plumas.length - 1; i >= 0; i--) {
-          var pl = plumas[i];
-          pl.vy += 16 * dt;
-          pl.vx *= 0.985;
-          pl.x += (pl.vx + Math.sin(tiempo * 4 + pl.giro) * 3) * dt;
-          pl.y += pl.vy * dt;
-          pl.giro += dt * 2.4;
-          pl.vida -= dt;
-          if (pl.vida <= 0) plumas.splice(i, 1);
+        for (i = chispas.length - 1; i >= 0; i--) {
+          var c = chispas[i];
+          c.vy += 30 * dt;
+          c.x += c.vx * dt;
+          c.y += c.vy * dt;
+          c.giro += dt * 4;
+          c.vida -= dt;
+          if (c.vida <= 0) chispas.splice(i, 1);
         }
-        for (i = gotas.length - 1; i >= 0; i--) {
-          var go = gotas[i];
-          go.vy += 95 * dt;
-          go.x += go.vx * dt;
-          go.y += go.vy * dt;
-          go.vida -= dt;
-          if (go.vida <= 0) gotas.splice(i, 1);
+        for (i = letreros.length - 1; i >= 0; i--) {
+          letreros[i].t += dt;
+          if (letreros[i].t > 0.9) letreros.splice(i, 1);
         }
-        for (i = ondas.length - 1; i >= 0; i--) {
-          ondas[i].t += dt;
-          if (ondas[i].t > 1.1) ondas.splice(i, 1);
+
+        /* La barra sigue al cronometro de arriba segundo a segundo, y entre
+           un segundo y el siguiente se desliza para no ir a saltos. */
+        if (cuenta) {
+          var q = cuenta.queda();
+          if (q !== quedaVisto) { quedaVisto = q; quedaFrac = 0; }
+          else quedaFrac = Math.min(1, quedaFrac + dt);
+          var meta = Math.max(0, quedaVisto - quedaFrac) / LIMITE;
+          barra += (meta - barra) * Math.min(1, dt * 6);
         }
       }
 
-      function moverPato(dt) {
-        var p = pato;
-        p.ala += dt * (p.estado === 'vuela' ? 15 : 24);
+      function moverObjetivo(dt) {
+        var p = objetivo;
 
         if (p.estado === 'vuela') {
           p.vida -= dt;
@@ -805,7 +925,6 @@
             var vel = p.base * (Math.random() < 0.22 ? 1.4 : 1);   // acelerones
             p.vx = Math.cos(ang) * vel;
             p.vy = Math.sin(ang) * vel;
-            p.dir = p.vx >= 0 ? 1 : -1;
           }
           p.x += p.vx * dt;
           p.y += p.vy * dt;
@@ -819,54 +938,57 @@
             p.rastro.shift();
           }
 
-          if (p.x < 7)      { p.x = 7;      p.dir =  1; p.vx =  Math.abs(p.vx); }
-          if (p.x > FW - 7) { p.x = FW - 7; p.dir = -1; p.vx = -Math.abs(p.vx); }
-          if (p.y < 7)      { p.y = 7;      p.vy =  Math.abs(p.vy) * 0.8; }
-          if (p.y > ORILLA - 6) { p.y = ORILLA - 6; p.vy = -Math.abs(p.vy); }
+          if (p.x < 9)          { p.x = 9;          p.vx =  Math.abs(p.vx); }
+          if (p.x > FW - 9)     { p.x = FW - 9;     p.vx = -Math.abs(p.vx); }
+          if (p.y < 18)          { p.y = 18;          p.vy =  Math.abs(p.vy) * 0.8; }
+          if (p.y > ORILLA - 12) { p.y = ORILLA - 12; p.vy = -Math.abs(p.vy); }
 
           if (p.vida <= 0) escapar('Se te fue volando');
 
+        } else if (p.estado === 'fijada') {
+          p.x += p.vx * 0.3 * dt;
+          p.y += p.vy * 0.3 * dt;
+          if (p.x < 9) p.x = 9; else if (p.x > FW - 9) p.x = FW - 9;
+          if (p.y < 18) p.y = 18; else if (p.y > ORILLA - 12) p.y = ORILLA - 12;
+
         } else if (p.estado === 'tocado') {
-          p.vy += 42 * dt;
-          p.y += p.vy * dt;
-          p.x += Math.sin(tiempo * 9) * 4 * dt;      // cae dando tumbos
-          p.giro += dt * 2.4;
-          if (p.y >= ORILLA - 1) {
-            chapuzon(p.x);
-            siguiente(false);
-          }
+          p.t += dt;
+          if (p.t >= 0.5) siguiente(false);
 
         } else if (p.estado === 'escapa') {
           p.y += p.vy * dt;
           p.x += p.vx * dt;
-          if (p.y < -10) siguiente(true);
+          if (p.y < -ALTO_DRA) {
+            if (vidas <= 0) acabar('vidas');
+            else siguiente(true);
+          }
         }
       }
 
-      function soltarPlumas(p) {
-        for (var i = 0; i < 11; i++) {
-          plumas.push({
+      /** Billetes que saltan de la doctora al atraparla y caen revoloteando. */
+      function soltarBilletes(p) {
+        for (var i = 0; i < 7; i++) {
+          var a = -Math.PI / 2 + (Math.random() - 0.5) * 2.4, v = 16 + Math.random() * 18;
+          billetes.push({
             x: p.x, y: p.y,
-            vx: (Math.random() - 0.5) * 24,
-            vy: (Math.random() - 0.7) * 16,
-            giro: Math.random() * TAU,
-            vida: 1.4,
-            color: i % 3 === 0 ? p.tipo.ala : '#FFFBF2'
+            vx: Math.cos(a) * v, vy: Math.sin(a) * v - 8,
+            giro: Math.random() * TAU, vgiro: (Math.random() - 0.5) * 10,
+            w: 6 + Math.random() * 3,
+            vida: 1.3 + Math.random() * 0.5, t: 0
           });
         }
       }
 
-      /** Salpicadura al caer el pato al agua. */
-      function chapuzon(x) {
-        App.tono(180, 0.16, 0.11, 'sine');
-        ondas.push({ x: x, t: 0 });
+      function soltarChispas(p) {
         for (var i = 0; i < 16; i++) {
-          gotas.push({
-            x: x + (Math.random() - 0.5) * 3,
-            y: ORILLA - 0.5,
-            vx: (Math.random() - 0.5) * 32,
-            vy: -14 - Math.random() * 22,
-            vida: 0.7
+          var a = Math.random() * TAU, v = 10 + Math.random() * 22;
+          chispas.push({
+            x: p.x, y: p.y,
+            vx: Math.cos(a) * v, vy: Math.sin(a) * v - 6,
+            giro: Math.random() * TAU,
+            vida: 0.8 + Math.random() * 0.4,
+            tam: 0.9 + Math.random() * 0.9,
+            color: i % 3 === 0 ? '#FFFFFF' : (i % 3 === 1 ? '#FFD84A' : '#FF8FB1')
           });
         }
       }
@@ -878,349 +1000,139 @@
         ctx.clearRect(0, 0, FW, FH);
         ctx.drawImage(fondo, 0, 0, FW, FH);
 
-        pintarNubes();
-        pintarGaviotas();
-        pintarAgua();
-        pintarEspuma();
-        if (pato) dibujarPato(ctx, pato);
-        pintarGotas();
-        pintarPlumas();
+        pintarCielo();
         dibujarPerro();
-        pintarDuna();
         ctx.drawImage(frente, 0, 0, FW, FH);
+        if (objetivo) dibujarObjetivo(objetivo);
+        pintarChispas();
+        pintarBilletes();
+        pintarLetreros();
+        dibujarPelotas();
+        pintarMonton();
         pintarDisparos();
-        dibujarMarcas();
+        pintarHud();
+        pintarMensaje();
       }
 
-      function pintarNubes() {
-        for (var i = 0; i < nubes.length; i++) {
-          var n = nubes[i];
-          var bultos = [
-            [n.x, n.y, n.r * 1.7, n.r * 0.5],
-            [n.x + n.r * 0.85, n.y - n.r * 0.3, n.r * 0.9, n.r * 0.48],
-            [n.x - n.r * 0.8, n.y - n.r * 0.1, n.r * 0.72, n.r * 0.4],
-            [n.x + n.r * 1.8, n.y + n.r * 0.08, n.r * 0.62, n.r * 0.3]
-          ];
-          nube(bultos, n.r * 0.24, 'rgba(248,221,180,' + (n.a * 0.5).toFixed(2) + ')');
-          nube(bultos, 0, 'rgba(255,253,246,' + n.a.toFixed(2) + ')');
-        }
-        ctx.globalAlpha = 1;
-      }
+      /** Sol que late, nubes y pajaros cruzando. */
+      function pintarCielo() {
+        var sw = 19 * (1 + Math.sin(tiempo * 1.3) * 0.03);
+        var sx = caja.x + caja.w * 0.749, sy = caja.y + caja.h * 0.532;
+        imagen(ctx, 'sol', sx - sw / 2, sy - sw / 2, sw);
 
-      /** Todos los bultos en un solo trazo: sin bordes ni recortes entre ellos. */
-      function nube(bultos, desvio, color) {
-        ctx.fillStyle = color;
-        ctx.beginPath();
-        for (var i = 0; i < bultos.length; i++) {
-          var b = bultos[i];
-          ctx.moveTo(b[0] + b[2], b[1] + desvio);
-          ctx.ellipse(b[0], b[1] + desvio, b[2], b[3], 0, 0, TAU);
-        }
-        ctx.fill();
-      }
-
-      function pintarGaviotas() {
-        ctx.strokeStyle = 'rgba(70,80,90,.45)';
-        ctx.lineWidth = 0.32;
-        for (var i = 0; i < gaviotas.length; i++) {
-          var g = gaviotas[i];
-          var bat = Math.sin(tiempo * 3 + g.fase) * 0.8;
-          ctx.beginPath();
-          ctx.moveTo(g.x - 1.6 * g.e, g.y + bat);
-          ctx.quadraticCurveTo(g.x - 0.7 * g.e, g.y - 0.8, g.x, g.y);
-          ctx.quadraticCurveTo(g.x + 0.7 * g.e, g.y - 0.8, g.x + 1.6 * g.e, g.y + bat);
-          ctx.stroke();
-        }
-      }
-
-      /** Destellos del sol y lineas de ola sobre el mar. */
-      function pintarAgua() {
         var i;
-        ctx.strokeStyle = 'rgba(255,255,255,.5)';
-        ctx.lineWidth = 0.28;
-        for (i = 0; i < 5; i++) {
-          var y = HORIZONTE + (ORILLA - HORIZONTE) * (0.14 + i * 0.17);
-          var amp = 0.25 + i * 0.14;
-          ctx.globalAlpha = 0.20 + i * 0.06;
-          ctx.beginPath();
-          for (var x = 0; x <= FW; x += 4) {
-            var yy = y + Math.sin(x * 0.16 + tiempo * (0.8 + i * 0.25) + i) * amp;
-            if (x === 0) ctx.moveTo(x, yy); else ctx.lineTo(x, yy);
-          }
-          ctx.stroke();
+        ctx.globalAlpha = 0.95;
+        for (i = 0; i < nubes.length; i++) {
+          imagen(ctx, nubes[i].img, nubes[i].x, nubes[i].y, nubes[i].w);
         }
         ctx.globalAlpha = 1;
-
-        for (i = 0; i < brillos.length; i++) {
-          var b = brillos[i];
-          var v = Math.sin(tiempo * b.v + b.fase);
-          if (v <= 0.1) continue;
-          ctx.globalAlpha = Math.min(0.85, v * 0.85);
-          ctx.fillStyle = '#FFF3D2';
-          ctx.fillRect(b.x - b.l / 2, b.y, b.l, 0.34);
+        for (i = 0; i < gaviotas.length; i++) {
+          var g = gaviotas[i];
+          imagen(ctx, g.img, g.x, g.y + Math.sin(tiempo * 3 + g.fase) * 0.8, g.w);
         }
-        ctx.globalAlpha = 1;
-
-        /* ondas del chapuzon */
-        for (i = 0; i < ondas.length; i++) {
-          var o = ondas[i];
-          var f = o.t / 1.1;
-          ctx.globalAlpha = (1 - f) * 0.8;
-          ctx.strokeStyle = '#FFFFFF';
-          ctx.lineWidth = 0.35;
-          ctx.beginPath();
-          ctx.ellipse(o.x, ORILLA - 1, 2 + f * 14, (2 + f * 14) * 0.28, 0, 0, TAU);
-          ctx.stroke();
-        }
-        ctx.globalAlpha = 1;
-      }
-
-      /** Espuma de la orilla, subiendo y bajando como una ola de verdad. */
-      function pintarEspuma() {
-        var sube = Math.sin(tiempo * 0.75) * (FH - ORILLA) * 0.16;
-        var base = ORILLA + (FH - ORILLA) * 0.12 + sube;
-
-        if (!espumaDeg) {
-          espumaDeg = ctx.createLinearGradient(0, ORILLA - 2, 0, ORILLA + (FH - ORILLA) * 0.4);
-          espumaDeg.addColorStop(0, 'rgba(255,255,255,.85)');
-          espumaDeg.addColorStop(0.55, 'rgba(255,255,255,.55)');
-          espumaDeg.addColorStop(1, 'rgba(255,255,255,0)');
-        }
-        ctx.fillStyle = espumaDeg;
-        ctx.beginPath();
-        ctx.moveTo(0, ORILLA - 2.5);
-        ctx.lineTo(FW, ORILLA - 2.5);
-        var x;
-        for (x = FW; x >= 0; x -= 3) {
-          ctx.lineTo(x, base + Math.sin(x * 0.11 + tiempo * 1.1) * 0.9
-                            + Math.sin(x * 0.27 - tiempo * 1.7) * 0.45);
-        }
-        ctx.closePath();
-        ctx.fill();
-
-        ctx.strokeStyle = 'rgba(255,255,255,.9)';
-        ctx.lineWidth = 0.4;
-        ctx.beginPath();
-        for (x = 0; x <= FW; x += 3) {
-          var y = base + Math.sin(x * 0.11 + tiempo * 1.1) * 0.9
-                       + Math.sin(x * 0.27 - tiempo * 1.7) * 0.45;
-          if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-        }
-        ctx.stroke();
-      }
-
-      /** Loma de arena de delante: el perro sale por detras. */
-      function pintarDuna() {
-        if (!dunaDeg) {
-          dunaDeg = ctx.createLinearGradient(0, DUNA - 2, 0, FH);
-          dunaDeg.addColorStop(0, '#EFE2C4');
-          dunaDeg.addColorStop(1, '#CBB388');
-        }
-        ctx.fillStyle = dunaDeg;
-        ctx.beginPath();
-        ctx.moveTo(0, FH);
-        ctx.lineTo(0, DUNA + 1.5);
-        ctx.quadraticCurveTo(FW * 0.3, DUNA - 2.2, FW * 0.55, DUNA + 0.6);
-        ctx.quadraticCurveTo(FW * 0.8, DUNA + 2.6, FW, DUNA - 0.8);
-        ctx.lineTo(FW, FH);
-        ctx.closePath();
-        ctx.fill();
+        if (loro) imagen(ctx, 'loro', loro.x, loro.y + Math.sin(tiempo * 4) * 0.7, loro.w);
       }
 
       /* ---------------------------------------------------------------
-         El pato: cabeza, pecho, cuerpo, cola y dos alas que baten,
-         con la luz calida del sol por el lomo.
+         La doctora: vuela ladeandose hacia donde va, con su sombra sobre
+         el agua cuando pasa bajo. Al atraparla se hincha y se desvanece.
          --------------------------------------------------------------- */
-      function dibujarPato(g, p) {
-        var t = p.tipo;
-        var caido = p.estado === 'tocado';
-        var f = Math.sin(p.ala);
+      function dibujarObjetivo(p) {
+        var hh = ALTO_DRA, w = ancho('doctora', hh);
 
-        /* sombra sobre el agua cuando vuela bajo */
         if (p.estado === 'vuela' && p.y > HORIZONTE) {
           var d = (p.y - HORIZONTE) / (ORILLA - HORIZONTE);
-          g.globalAlpha = 0.18 * d;
-          g.fillStyle = '#123044';
-          g.beginPath();
-          g.ellipse(p.x + 2, ORILLA - 1.5, 6 * zoom * d, 1.5 * zoom * d, 0, 0, TAU);
-          g.fill();
-          g.globalAlpha = 1;
-        }
-
-        g.save();
-        g.translate(p.x, p.y);
-        if (caido) g.rotate(p.giro);
-        g.scale(p.dir * zoom, zoom);
-
-        /* ala de detras */
-        g.save();
-        g.translate(-1, -0.5);
-        g.rotate(caido ? -1.15 : 0.42 + f * 0.85);
-        ala(g, t.alaOsc, t.espejo, 0.86);
-        g.restore();
-
-        /* cola */
-        g.fillStyle = t.cuerpoOsc;
-        g.beginPath();
-        g.moveTo(-4, -0.9);
-        g.lineTo(-7.8, -2.9);
-        g.quadraticCurveTo(-6.6, -1.2, -7.2, 0.3);
-        g.closePath();
-        g.fill();
-
-        /* cuerpo */
-        var cuerpo = g.createLinearGradient(0, -3.4, 0, 3.4);
-        cuerpo.addColorStop(0, t.cuerpoLuz);
-        cuerpo.addColorStop(0.55, t.cuerpo);
-        cuerpo.addColorStop(1, t.cuerpoOsc);
-        g.fillStyle = cuerpo;
-        g.beginPath();
-        g.ellipse(0, 0, 5.4, 3.2, -0.1, 0, TAU);
-        g.fill();
-
-        /* pecho */
-        g.fillStyle = t.pecho;
-        g.beginPath();
-        g.ellipse(2.9, 0.1, 2.9, 2.5, -0.2, 0, TAU);
-        g.fill();
-
-        /* panza clara */
-        g.fillStyle = 'rgba(255,252,244,.35)';
-        g.beginPath();
-        g.ellipse(-0.2, 1.9, 3.4, 1.3, -0.05, 0, TAU);
-        g.fill();
-
-        /* cuello */
-        g.fillStyle = t.cabeza;
-        g.beginPath();
-        g.moveTo(2.6, -1.6);
-        g.quadraticCurveTo(4.4, -1.4, 5.1, -2.4);
-        g.lineTo(4, -3.6);
-        g.quadraticCurveTo(3.2, -2.6, 2.4, -2);
-        g.closePath();
-        g.fill();
-
-        /* collar blanco (solo el ánade real) */
-        if (t.collar) {
-          g.strokeStyle = '#F7F1E4';
-          g.lineWidth = 0.62;
-          g.beginPath();
-          g.moveTo(2.9, -1.5);
-          g.quadraticCurveTo(4.2, -1.9, 4.9, -2.9);
-          g.stroke();
-        }
-
-        /* cabeza */
-        var cab = g.createRadialGradient(4.6, -4, 0.4, 4.7, -2.9, 3);
-        cab.addColorStop(0, t.cabezaLuz);
-        cab.addColorStop(1, t.cabeza);
-        g.fillStyle = cab;
-        g.beginPath();
-        g.ellipse(4.8, -3, 2.5, 2.3, -0.15, 0, TAU);
-        g.fill();
-
-        /* pico */
-        var pico = g.createLinearGradient(6, -3, 9.6, -2);
-        pico.addColorStop(0, '#E8B84B');
-        pico.addColorStop(1, '#C98F2E');
-        g.fillStyle = pico;
-        g.beginPath();
-        g.moveTo(6.3, -3.5);
-        g.quadraticCurveTo(9.6, -3.2, 9.9, -2.2);
-        g.quadraticCurveTo(8.6, -1.4, 6.4, -1.9);
-        g.closePath();
-        g.fill();
-        g.fillStyle = 'rgba(90,60,20,.5)';
-        g.beginPath();
-        g.ellipse(7.6, -2.9, 0.32, 0.2, 0, 0, TAU);
-        g.fill();
-
-        /* ojo */
-        g.fillStyle = '#20242A';
-        g.beginPath();
-        g.arc(5.6, -3.7, 0.52, 0, TAU);
-        g.fill();
-        g.fillStyle = 'rgba(255,255,255,.9)';
-        g.beginPath();
-        g.arc(5.75, -3.9, 0.18, 0, TAU);
-        g.fill();
-
-        /* luz del sol por el lomo */
-        g.strokeStyle = 'rgba(255,238,200,.55)';
-        g.lineWidth = 0.42;
-        g.beginPath();
-        g.ellipse(0, 0, 5.4, 3.2, -0.1, Math.PI * 1.08, Math.PI * 1.85);
-        g.stroke();
-
-        /* ala de delante */
-        g.save();
-        g.translate(-0.3, -1);
-        g.rotate(caido ? -2 : -0.5 - f * 1.05);
-        ala(g, t.ala, t.espejo, 1);
-        g.restore();
-
-        g.restore();
-      }
-
-      /** Un ala: pluma grande, espejuelo de color y borde claro. */
-      function ala(g, color, espejo, k) {
-        var deg = g.createLinearGradient(0, -6.6 * k, 0, 0.6 * k);
-        deg.addColorStop(0, '#FFFFFF');
-        deg.addColorStop(0.22, color);
-        deg.addColorStop(1, color);
-        g.fillStyle = deg;
-        g.beginPath();
-        g.moveTo(0, 0);
-        g.quadraticCurveTo(-2.2 * k, -4.4 * k, -0.4 * k, -6.8 * k);
-        g.quadraticCurveTo(2.6 * k, -4.6 * k, 2.1 * k, 0.4 * k);
-        g.closePath();
-        g.fill();
-
-        g.fillStyle = espejo;
-        g.beginPath();
-        g.moveTo(0.2 * k, -0.4 * k);
-        g.quadraticCurveTo(1.5 * k, -1.6 * k, 1.9 * k, -0.2 * k);
-        g.quadraticCurveTo(1.2 * k, 0.4 * k, 0.2 * k, -0.4 * k);
-        g.fill();
-
-        g.strokeStyle = 'rgba(255,255,255,.55)';
-        g.lineWidth = 0.3 * k;
-        g.beginPath();
-        g.moveTo(0, 0);
-        g.quadraticCurveTo(-2.2 * k, -4.4 * k, -0.4 * k, -6.8 * k);
-        g.stroke();
-      }
-
-      function pintarPlumas() {
-        for (var i = 0; i < plumas.length; i++) {
-          var p = plumas[i];
-          ctx.save();
-          ctx.globalAlpha = Math.min(1, p.vida / 1.4) * 0.95;
-          ctx.translate(p.x, p.y);
-          ctx.rotate(p.giro);
-          ctx.fillStyle = p.color;
+          ctx.globalAlpha = 0.16 * d;
+          ctx.fillStyle = '#123044';
           ctx.beginPath();
-          ctx.moveTo(-1.3, 0);
-          ctx.quadraticCurveTo(0, -0.75, 1.3, 0);
-          ctx.quadraticCurveTo(0, 0.5, -1.3, 0);
+          ctx.ellipse(p.x + 2, ORILLA - 1.5, 3.6 * d, 1.3 * d, 0, 0, TAU);
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+
+        var esc = 1, alfa = 1;
+        if (p.estado === 'tocado') {
+          var f = Math.min(1, p.t / 0.5);
+          esc = 1 + 0.35 * Math.sin(f * Math.PI);
+          alfa = 1 - f;
+        }
+        var ladeo = p.estado === 'vuela' ? Math.max(-0.22, Math.min(0.22, p.vx / 250))
+                  : (p.estado === 'escapa' ? -0.1 : 0);
+
+        ctx.save();
+        ctx.globalAlpha = alfa;
+        ctx.translate(p.x, p.y + Math.sin(tiempo * 5 + p.fase) * 0.6);
+        ctx.rotate(ladeo);
+        ctx.scale(esc, esc);
+        imagen(ctx, 'doctora', -w / 2, -hh / 2, w);
+        ctx.restore();
+        ctx.globalAlpha = 1;
+      }
+
+      /** Estrellitas al atraparla. */
+      function pintarChispas() {
+        for (var i = 0; i < chispas.length; i++) {
+          var c = chispas[i];
+          ctx.save();
+          ctx.globalAlpha = Math.min(1, c.vida / 0.4);
+          ctx.translate(c.x, c.y);
+          ctx.rotate(c.giro);
+          ctx.fillStyle = c.color;
+          estrella(ctx, c.tam);
           ctx.fill();
           ctx.restore();
         }
         ctx.globalAlpha = 1;
       }
 
-      function pintarGotas() {
-        ctx.fillStyle = '#FFFFFF';
-        for (var i = 0; i < gotas.length; i++) {
-          var g = gotas[i];
-          ctx.globalAlpha = Math.max(0, g.vida / 0.7) * 0.9;
-          ctx.beginPath();
-          ctx.ellipse(g.x, g.y, 0.45, 0.75, 0, 0, TAU);
-          ctx.fill();
+      function estrella(g, r) {
+        g.beginPath();
+        for (var i = 0; i < 8; i++) {
+          var rr = i % 2 ? r * 0.45 : r;
+          var a = i * Math.PI / 4;
+          g.lineTo(Math.cos(a) * rr, Math.sin(a) * rr);
+        }
+        g.closePath();
+      }
+
+      /** Los puntos ganados, subiendo desde donde estaba. */
+      function pintarLetreros() {
+        for (var i = 0; i < letreros.length; i++) {
+          var l = letreros[i];
+          ctx.globalAlpha = 1 - l.t / 0.9;
+          texto(l.texto, l.x, l.y - l.t * 9, 4.4, 'center', 800, '#FFE45C');
         }
         ctx.globalAlpha = 1;
       }
 
+      function pintarBilletes() {
+        for (var i = 0; i < billetes.length; i++) {
+          var bi = billetes[i];
+          var w = bi.w, hh = alto('billete', w);
+          ctx.save();
+          ctx.globalAlpha = Math.max(0, Math.min(1, (bi.vida - bi.t) / 0.4));
+          ctx.translate(bi.x, bi.y);
+          ctx.rotate(bi.giro);
+          imagen(ctx, 'billete', -w / 2, -hh / 2, w);
+          ctx.restore();
+        }
+        ctx.globalAlpha = 1;
+      }
+
+      /** La pelota de billetes: grande al salir, pequena al llegar, porque se aleja. */
+      function dibujarPelotas() {
+        for (var i = 0; i < pelotas.length; i++) {
+          var b = pelotas[i];
+          var w = 20 - 12 * b.f;
+          ctx.save();
+          ctx.translate(b.x, b.y);
+          ctx.rotate(b.giro);
+          imagen(ctx, 'pelota', -w / 2, -w / 2, w, w);
+          ctx.restore();
+        }
+      }
+
+      /** Anillo y mira donde cayo la pelota. */
       function pintarDisparos() {
         for (var i = 0; i < disparos.length; i++) {
           var d = disparos[i];
@@ -1231,7 +1143,7 @@
           ctx.beginPath();
           ctx.arc(d.x, d.y, 2 + f * 8, 0, TAU);
           ctx.stroke();
-          ctx.strokeStyle = '#B9924F';
+          ctx.strokeStyle = '#FFD84A';
           ctx.lineWidth = 0.55;
           ctx.beginPath();
           ctx.moveTo(d.x - 3.2, d.y); ctx.lineTo(d.x - 1, d.y);
@@ -1243,117 +1155,25 @@
         ctx.globalAlpha = 1;
       }
 
-      /** El perro asoma por detras de la duna: buscando, riendose o con los patos. */
+      /** El perro asoma de la arena: buscando, riendose o con la copa. */
       function dibujarPerro() {
         if (perro.alto < 0.01) return;
-        var salto = perro.estado === 'rie' ? Math.abs(Math.sin(perro.t * 7)) * 2 : 0;
-        var y = DUNA + (9 - perro.alto * 14 - salto) * zoom;
-        var x = 50;
+        var w = 28, hh = alto('perro', w);
+        var salto = perro.estado === 'rie' ? Math.abs(Math.sin(perro.t * 7)) * 2.5 : 0;
+        var base = DUNA + 10;                            // donde apoya el monticulo
+        var y = base - hh * perro.alto - salto;
+        var x = FW / 2 - w / 2;
 
         ctx.save();
-        ctx.translate(x, y);
-        ctx.scale(zoom, zoom);
-
-        if (perro.estado === 'trofeo') {                 // levanta los patos cazados
-          for (var i = 0; i < perro.patos; i++) {
-            ctx.save();
-            ctx.translate(-6 + i * 12, -8.5);
-            ctx.scale(0.6, 0.6);
-            dibujarPato(ctx, { tipo: TIPOS[0], x: 0, y: -9999, dir: i ? -1 : 1,
-                               ala: 1.6, giro: 0, estado: 'quieto' });
-            ctx.restore();
-          }
+        ctx.beginPath();
+        ctx.rect(0, 0, FW, base);                        // lo de debajo queda enterrado
+        ctx.clip();
+        if (perro.estado === 'trofeo') {
+          var sube = Math.sin(perro.t * 5) * 1.2;
+          imagen(ctx, 'copa', FW / 2 - 4.5, y - 8 + sube, 9);
         }
-
-        var pelo = ctx.createLinearGradient(0, -8, 0, 7);
-        pelo.addColorStop(0, '#D89B5C');
-        pelo.addColorStop(1, '#A96E3A');
-
-        ctx.fillStyle = pelo;
-        ctx.beginPath();
-        ctx.ellipse(0, 3, 6.4, 4.6, 0, 0, TAU);
-        ctx.fill();
-
-        ctx.fillStyle = '#FBF3E6';
-        ctx.beginPath();
-        ctx.ellipse(-3.4, 0.6, 1.5, 2.4, 0.3, 0, TAU);
-        ctx.ellipse(3.4, 0.6, 1.5, 2.4, -0.3, 0, TAU);
-        ctx.fill();
-
-        ctx.fillStyle = pelo;
-        ctx.beginPath();
-        ctx.arc(0, -3.4, 4.2, 0, TAU);
-        ctx.fill();
-
-        ctx.fillStyle = '#8B5E33';
-        ctx.beginPath();
-        ctx.ellipse(-4.4, -2.6, 1.7, 3.6, 0.25, 0, TAU);
-        ctx.ellipse(4.4, -2.6, 1.7, 3.6, -0.25, 0, TAU);
-        ctx.fill();
-
-        ctx.fillStyle = '#FBF3E6';
-        ctx.beginPath();
-        ctx.ellipse(0, -1.9, 2.9, 2.1, 0, 0, TAU);
-        ctx.fill();
-        ctx.fillStyle = '#3B322A';
-        ctx.beginPath();
-        ctx.ellipse(0, -3.1, 0.85, 0.65, 0, 0, TAU);
-        ctx.fill();
-
-        ctx.strokeStyle = '#3B322A';
-        ctx.lineWidth = 0.45;
-        if (perro.estado === 'rie') {
-          ctx.beginPath();
-          ctx.arc(-1.8, -5, 1, 0.15, Math.PI - 0.15);
-          ctx.arc(1.8, -5, 1, 0.15, Math.PI - 0.15);
-          ctx.stroke();
-          ctx.fillStyle = '#8F4234';
-          ctx.beginPath();
-          ctx.ellipse(0, -0.9, 1.5, 1.1, 0, 0, TAU);
-          ctx.fill();
-        } else {
-          ctx.fillStyle = '#3B322A';
-          ctx.beginPath();
-          ctx.arc(-1.7, -5, 0.6, 0, TAU);
-          ctx.arc(1.7, -5, 0.6, 0, TAU);
-          ctx.fill();
-          ctx.beginPath();
-          ctx.arc(0, -1.2, 1.1, 0.2, Math.PI - 0.2);
-          ctx.stroke();
-        }
-
+        imagen(ctx, 'perro', x, y, w);
         ctx.restore();
-      }
-
-      /** Fila de patos de la ronda: llenos los cazados, huecos los perdidos. */
-      function dibujarMarcas() {
-        var an = 4.4, sep = 1.4;
-        var total = PATOS_RONDA * an + (PATOS_RONDA - 1) * sep;
-        var x0 = (FW - total) / 2;
-        var y = FH - 3;
-        for (var i = 0; i < PATOS_RONDA; i++) {
-          var cx = x0 + i * (an + sep) + an / 2;
-          var hecho = i < marcas.length;
-          ctx.beginPath();
-          ctx.moveTo(cx - 2.1, y + 0.6);
-          ctx.quadraticCurveTo(cx - 0.6, y - 1.9, cx + 0.4, y + 0.1);
-          ctx.quadraticCurveTo(cx + 1.4, y - 1.9, cx + 2.4, y + 0.5);
-          ctx.quadraticCurveTo(cx, y + 2.1, cx - 2.1, y + 0.6);
-          if (hecho && marcas[i]) {
-            ctx.fillStyle = '#FFFDF8';
-            ctx.fill();
-            ctx.strokeStyle = 'rgba(120,90,50,.5)';
-            ctx.lineWidth = 0.3;
-            ctx.stroke();
-          } else if (hecho) {
-            ctx.fillStyle = 'rgba(90,70,45,.32)';
-            ctx.fill();
-          } else {
-            ctx.strokeStyle = 'rgba(120,95,55,.55)';
-            ctx.lineWidth = 0.4;
-            ctx.stroke();
-          }
-        }
       }
 
       /* ------------------------- Controles ------------------------- */
@@ -1404,7 +1224,7 @@
       function bucle(t) {
         cuadro = requestAnimationFrame(bucle);
         var dt = ultimo ? Math.max(0, Math.min(0.05, (t - ultimo) / 1000)) : 0;
-        /* Cuanto tarda un dibujo. En una pantalla lenta el pato da saltos
+        /* Cuanto tarda un dibujo. En una pantalla lenta la doctora da saltos
            grandes entre uno y otro, y el margen tiene que crecer con ellos. */
         if (ultimo) fotograma = fotograma * 0.9 + (t - ultimo) * 0.1;
         ultimo = t;
@@ -1412,13 +1232,13 @@
         dibujar();
       }
 
-      /* Minuto y medio de partida. */
-      cuenta = api.cuenta(LIMITE, function () { acabar(true); });
+      /* Minuto de partida: el mismo cronometro de arriba mueve la barra. */
+      cuenta = api.cuenta(LIMITE, function () { acabar('tiempo'); });
 
+      cargar(function () { if (!terminado) medir(); });   // al llegar las fotos, se repinta
       medir();
       api.luego(medir, 450);
-      pintarHud();
-      empezarRonda();
+      empezarNivel();
       cuadro = requestAnimationFrame(bucle);
 
       /* Limpieza al salir del juego */

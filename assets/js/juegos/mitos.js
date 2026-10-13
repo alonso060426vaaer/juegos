@@ -1,104 +1,148 @@
 /* ==========================================================================
    JUEGO 3 - MITOS Y VERDADES: decide si la frase es cierta o es un mito
+   Viste el tema botanico (crema, verde salvia y oro): insignias del
+   marcador, barra de progreso, tarjeta de pregunta, botones Verdad y Mito
+   con sus iconos y la mascota que comenta desde su bocadillo. Las imagenes
+   salen de assets/img/mitos (ver herramientas/preparar-assets-mitos.py).
    ========================================================================== */
 
 (function () {
   'use strict';
 
+  /* Solo cosas de la clinica: sus tratamientos, sus productos y los
+     cuidados de antes y despues. */
   var FRASES = [
-    { t: 'El protector solar solo hace falta en verano o en la playa.', v: false,
-      d: 'Los rayos UV atraviesan las nubes y las ventanas. Se usa todo el año.' },
+    { t: 'La toxina botulínica deja la cara sin expresión.', v: false,
+      d: 'Bien aplicada, suaviza las líneas y conserva una expresión natural.' },
 
-    { t: 'Dormir bien mejora el aspecto de la piel.', v: true,
-      d: 'Durante el sueño el cuerpo repara tejidos y regula hormonas del estrés.' },
+    { t: 'Los rellenos de ácido hialurónico son permanentes.', v: false,
+      d: 'El cuerpo los reabsorbe poco a poco; suelen durar varios meses.' },
 
-    { t: 'Depilarse hace que el vello salga más grueso y más oscuro.', v: false,
-      d: 'El vello se ve más áspero al crecer con la punta cortada, pero no cambia de grosor.' },
+    { t: 'El cuerpo fabrica ácido hialurónico de forma natural.', v: true,
+      d: 'Está en la piel y las articulaciones; con la edad se produce menos.' },
 
-    { t: 'La piel grasa no necesita hidratación.', v: false,
-      d: 'También se deshidrata. Basta con una textura ligera, en gel o sin aceites.' },
+    { t: 'Los bioestimuladores rellenan al instante.', v: false,
+      d: 'Actúan poco a poco: hacen que la piel fabrique su propio colágeno.' },
 
-    { t: 'El estrés puede empeorar problemas de la piel.', v: true,
-      d: 'Influye en brotes de acné, dermatitis y caída del cabello.' },
+    { t: 'Con los años el cuerpo produce menos colágeno.', v: true,
+      d: 'Por eso la piel pierde firmeza y aparecen arrugas.' },
 
-    { t: 'El agua muy caliente reseca la piel.', v: true,
-      d: 'Arrastra la grasa natural que la protege. Mejor tibia y duchas cortas.' },
+    { t: 'La toxina botulínica también se usa en medicina, no solo en estética.', v: true,
+      d: 'Por ejemplo, para la sudoración excesiva o algunas migrañas.' },
 
-    { t: 'Los labios no necesitan protección solar.', v: false,
-      d: 'Tienen poca melanina y se queman con facilidad: usa bálsamo con FPS.' },
+    { t: 'El efecto de la toxina botulínica dura para siempre.', v: false,
+      d: 'Dura entre 3 y 6 meses, y luego se repite.' },
 
-    { t: 'Fumar acelera el envejecimiento de la piel.', v: true,
-      d: 'Reduce el oxígeno y daña el colágeno: más arrugas y tono apagado.' },
+    { t: 'Un relleno de ácido hialurónico se puede disolver si hace falta.', v: true,
+      d: 'Se usa una enzima llamada hialuronidasa.' },
 
-    { t: 'Una crema puede eliminar la celulitis por completo.', v: false,
-      d: 'Puede mejorar el aspecto de la piel, pero no eliminarla del todo.' },
+    { t: 'Después de un peeling se puede tomar sol sin protector.', v: false,
+      d: 'La piel renovada es más sensible: protector siempre.' },
 
-    { t: 'Si te arrancas una cana, salen siete más.', v: false,
-      d: 'De cada folículo sale un solo pelo. Arrancarlo solo puede dañarlo.' },
+    { t: 'El HIFU necesita cortes o cirugía.', v: false,
+      d: 'Es ultrasonido focalizado aplicado sobre la piel, sin incisiones.' },
 
-    { t: 'Beber agua ayuda al buen funcionamiento de todo el organismo.', v: true,
-      d: 'Regula la temperatura, transporta nutrientes y ayuda a eliminar desechos.' },
+    { t: 'El plasma rico en plaquetas se saca de la sangre de un donante.', v: false,
+      d: 'Se obtiene de tu propia sangre.' },
 
-    { t: 'Las camas solares son una forma segura de broncearse.', v: false,
-      d: 'Emiten radiación UV y aumentan el riesgo de cáncer de piel.' },
+    { t: 'Con Emsculpt se trabaja el músculo mientras estás tumbado.', v: true,
+      d: 'El equipo provoca las contracciones por ti.' },
 
-    { t: 'Tronarse los dedos causa artritis.', v: false,
-      d: 'El sonido viene de burbujas de gas en el líquido de la articulación.' },
+    { t: 'El JetPeel usa agujas.', v: false,
+      d: 'Trabaja con un chorro de aire y suero, sin pinchazos.' },
 
-    { t: 'El ejercicio regular mejora la circulación y el ánimo.', v: true,
-      d: 'Libera endorfinas y favorece el retorno venoso de las piernas.' },
+    { t: 'Morpheus combina microagujas y radiofrecuencia.', v: true,
+      d: 'Así tensa la piel desde dentro.' },
 
-    { t: 'Cuanto más producto te apliques, mejores resultados.', v: false,
-      d: 'El exceso puede irritar. La constancia importa más que la cantidad.' },
+    { t: 'La endermología es un masaje con rodillos y succión.', v: true,
+      d: 'Ayuda con la celulitis y a reafirmar.' },
 
-    { t: 'Desmaquillarse antes de dormir ayuda a prevenir los poros obstruidos.', v: true,
-      d: 'El maquillaje mezclado con grasa y polvo favorece imperfecciones.' },
+    { t: 'Los resultados de la radiofrecuencia siguen mejorando semanas después.', v: true,
+      d: 'Es el tiempo que tarda en formarse el colágeno nuevo.' },
 
-    { t: 'Leer con poca luz daña la vista de forma permanente.', v: false,
-      d: 'Causa fatiga visual y dolor de cabeza, pero no un daño permanente.' },
+    { t: 'Con una sola sesión de cualquier tratamiento basta para siempre.', v: false,
+      d: 'Muchos tratamientos necesitan varias sesiones y mantenimiento.' },
 
-    { t: 'La alimentación influye en la salud de la piel y el cabello.', v: true,
-      d: 'Proteínas, vitaminas y minerales son la materia prima de ambos.' }
+    { t: 'El protector solar ayuda a que los resultados de los tratamientos duren más.', v: true,
+      d: 'El sol es lo que más acelera el envejecimiento de la piel.' },
+
+    { t: 'La mesoterapia son microinyecciones en la piel.', v: true,
+      d: 'Llevan vitaminas, ácido hialurónico u otros activos.' },
+
+    { t: 'Los polinucleótidos son un tipo de toxina.', v: false,
+      d: 'Son fragmentos de ADN que ayudan a reparar la piel.' },
+
+    { t: 'Los exosomas son células madre.', v: false,
+      d: 'Son vesículas que las células usan para enviarse señales.' },
+
+    { t: 'Los skinboosters sirven para aumentar mucho el volumen de los labios.', v: false,
+      d: 'Hidratan y mejoran la calidad de la piel; el volumen se da con fillers.' },
+
+    { t: 'Después de las microagujas hay que esperar para maquillarse.', v: true,
+      d: 'Se recomienda dejar descansar la piel al menos un día.' },
+
+    { t: 'El retinol se usa mejor de noche.', v: true,
+      d: 'Sensibiliza la piel al sol.' },
+
+    { t: 'La vitamina C en sérum es un antioxidante.', v: true,
+      d: 'Protege del daño ambiental y da luminosidad.' },
+
+    { t: 'Los tratamientos estéticos son solo para mujeres.', v: false,
+      d: 'Cada vez más hombres se hacen toxina, HIFU o Emsculpt.' },
+
+    { t: 'Hay que contarle al médico qué medicamentos tomas antes de un tratamiento.', v: true,
+      d: 'Algunos medicamentos cambian cómo se hace o cuándo.' },
+
+    { t: 'Si una crema pica mucho, es que está funcionando.', v: false,
+      d: 'El picor o el ardor suelen ser señal de irritación.' },
+
+    { t: 'Exfoliarse todos los días deja la piel más sana.', v: false,
+      d: 'En exceso irrita la piel. Una o dos veces por semana basta.' },
+
+    { t: 'Cosmelan es un tratamiento para las manchas.', v: true,
+      d: 'Es de Mesoestetic y trata sobre todo el melasma.' },
+
+    { t: 'Se puede hacer radiofrecuencia con la piel quemada por el sol.', v: false,
+      d: 'Primero hay que esperar a que la piel se recupere.' },
+
+    { t: 'Las patas de gallo se pueden suavizar con toxina botulínica.', v: true,
+      d: 'Es una de las zonas que mejor responden.' },
+
+    { t: 'La celulitis solo aparece en personas con sobrepeso.', v: false,
+      d: 'Es muy común también en personas delgadas; influyen hormonas y genética.' },
+
+    { t: 'Las estrías solo les salen a las mujeres.', v: false,
+      d: 'También aparecen en hombres, por ejemplo con cambios de peso o de músculo.' },
+
+    { t: 'Sculptra es un relleno de ácido hialurónico.', v: false,
+      d: 'Es ácido poli-L-láctico, un bioestimulador.' },
+
+    { t: 'HArmonyCa combina ácido hialurónico e hidroxiapatita cálcica.', v: true,
+      d: 'Da efecto lifting y además estimula colágeno.' },
+
+    { t: 'Los fillers solo se usan en los labios.', v: false,
+      d: 'También en pómulos, mentón, mandíbula y ojeras.' },
+
+    { t: 'La papada se puede tratar sin cirugía.', v: true,
+      d: 'Hay opciones como el HIFU o la radiofrecuencia, según cada caso.' },
+
+    { t: 'El cuello y las manos también delatan la edad.', v: true,
+      d: 'Conviene cuidarlos y ponerles protector igual que a la cara.' },
+
+    { t: 'Las pieles oscuras no necesitan protector solar.', v: false,
+      d: 'También sufren manchas y daño por el sol.' }
   ];
 
-  /* Dificultad alta: 10 frases en minuto y medio. */
+  /* Dificultad alta: 10 frases en 35 segundos. */
   var TOTAL = 10;
-  var OBJETIVO = 7;                   // aciertos para llevarse el premio
+  var OBJETIVO = 5;                   // aciertos para llevarse el premio
   var ESPERA = 2000;                  // ms que se ve el veredicto antes de pasar solo
+  var PUNTOS_ACIERTO = 10;            // puntos por respuesta correcta
 
-  /* Dibujos del tema spa (SVG para que se vean nitidos en la tele). */
-  var ICO_RONDA = '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="12" fill="#35C49B"/>' +
-    '<path d="m12 5.6 1.9 3.9 4.3.6-3.1 3 .7 4.3-3.8-2-3.8 2 .7-4.3-3.1-3 4.3-.6z" fill="#fff"/></svg>';
-
-  var ICO_ACIERTOS = '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="12" fill="#3E8FE0"/>' +
-    '<circle cx="12" cy="12" r="6.4" stroke="#fff" stroke-width="2"/>' +
-    '<circle cx="12" cy="12" r="2.2" fill="#fff"/></svg>';
-
-  /* El sello de la tarjeta cambia con el tema de la frase. */
-  var ICO_SELLO = '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="12" fill="#E4F6EF"/>' +
-    '<circle cx="12" cy="12" r="4.2" stroke="#2FB98A" stroke-width="1.8"/>' +
-    '<path d="M12 3.4v2.2M12 18.4v2.2M3.4 12h2.2M18.4 12h2.2M6 6l1.5 1.5M16.5 16.5 18 18M18 6l-1.5 1.5M7.5 16.5 6 18" ' +
-    'stroke="#2FB98A" stroke-width="1.8" stroke-linecap="round"/></svg>';
-
-  var HOJA = '<svg viewBox="0 0 100 100" fill="none" aria-hidden="true">' +
-    '<path d="M6 94C6 52 30 20 82 8c6 44-16 76-76 86z" fill="#7BC9A0" opacity=".85"/>' +
-    '<path d="M8 92C24 58 46 34 80 12" stroke="#4FA87E" stroke-width="2.4" opacity=".7"/>' +
-    '<path d="M30 70c8-14 4-26-2-34M52 46c10-10 12-22 10-30M22 84c-2-14-10-22-16-26" ' +
-    'stroke="#4FA87E" stroke-width="2" opacity=".5"/></svg>';
-
-  var LOTO = '<svg viewBox="0 0 40 24" fill="none" aria-hidden="true">' +
-    '<path d="M20 3c3 4 4 8 0 13-4-5-3-9 0-13z" fill="#35C49B"/>' +
-    '<path d="M12 8c4 2 6 5 7 10-6-1-8-5-7-10zM28 8c-4 2-6 5-7 10 6-1 8-5 7-10z" fill="#5FD3B0"/>' +
-    '<path d="M5 13c5 0 9 2 12 6-6 2-11-1-12-6zM35 13c-5 0-9 2-12 6 6 2 11-1 12-6z" fill="#8FE3C8"/></svg>';
-
-  var DECORADO_SPA =
-    '<span class="spa-luz"></span>' +
-    '<span class="spa-espejo"></span>' +
-    '<span class="spa-hoja h1">' + HOJA + '</span>' +
-    '<span class="spa-hoja h2">' + HOJA + '</span>' +
-    '<span class="spa-hoja h3">' + HOJA + '</span>' +
-    '<div class="spa-cartel">Tu piel<br>también importa<span class="spa-corazon">♥</span></div>' +
-    '<span class="spa-tarro t1"></span><span class="spa-tarro t2"></span>';
+  var RUTA = 'assets/img/mitos/';
+  function img(archivo, clase) {
+    return h('img', { class: clase || null, src: RUTA + archivo, alt: '', 'aria-hidden': 'true' });
+  }
 
   App.registrar({
     id: 'mitos',
@@ -114,19 +158,23 @@
       var cuenta = null, acabado = false;
       var respondida = false;
 
-      var barra = h('i', { estilo: 'width:0%' });
+      var puntos = 0;
+      var barraI = h('i', { estilo: 'width:0%' });
+      var barraEtq = h('span', { class: 'progreso-etq' }, '0/' + TOTAL);
       var valorRonda = h('span', { class: 'val' }, '1');
       var valorAciertos = h('span', { class: 'val' }, '0');
+      var valorPuntos = h('span', { class: 'val' }, '0');
 
       var frase = h('p', { class: 'frase-mito' });
       var veredicto = h('div', { class: 'veredicto', hidden: true });
+      var destellos = img('destellos.png', 'destellos');
 
       var botonVerdad = h('button', { class: 'btn-juicio es-verdad' },
-        h('span', { class: 'juicio-emoji', 'aria-hidden': 'true' }, '✔'),
+        img('icono-correcto.png', 'juicio-icono'),
         h('span', {}, 'Verdad')
       );
       var botonMito = h('button', { class: 'btn-juicio es-mito' },
-        h('span', { class: 'juicio-emoji', 'aria-hidden': 'true' }, '✖'),
+        img('icono-incorrecto.png', 'juicio-icono'),
         h('span', {}, 'Mito')
       );
       var botones = h('div', { class: 'juicios' }, botonVerdad, botonMito);
@@ -134,45 +182,69 @@
       botonVerdad.addEventListener('click', function () { responder(true); });
       botonMito.addEventListener('click', function () { responder(false); });
 
-      vista.classList.add('tema-spa');
-      document.body.classList.add('spa');          // tiñe tambien la barra de arriba
-      vista.appendChild(h('div', { class: 'spa-deco', html: DECORADO_SPA, 'aria-hidden': 'true' }));
+      /* la mascota comenta desde su bocadillo */
+      var aviso = h('p', { class: 'aviso bocadillo-texto' }, 'Lee la frase y decide: ¿verdad o mito?');
+      var bocadillo = h('div', { class: 'bocadillo' }, aviso);
+      var guia = h('div', { class: 'guia' }, bocadillo, img('avatar.png', 'guia-avatar'));
+
+      vista.classList.add('tema-botanico');
+      vista.appendChild(h('div', { class: 'botanico-deco', 'aria-hidden': 'true' },
+        img('hojas.png', 'deco-hojas-izq'),
+        img('hojas.png', 'deco-hojas-der'),
+        img('anillo.png', 'deco-anillo')
+      ));
+
+      function dato(insignia, val, etq) {
+        return h('div', { class: 'dato dato-insignia' },
+          img(insignia),
+          h('div', { class: 'dato-texto' }, val, h('span', { class: 'etq' }, etq)));
+      }
 
       vista.appendChild(h('div', { class: 'marcador' },
-        h('div', { class: 'dato' },
-          h('span', { class: 'dato-icono', html: ICO_RONDA, 'aria-hidden': 'true' }),
-          h('span', { class: 'dato-texto' }, valorRonda, h('span', { class: 'etq' }, 'Ronda'))),
-        h('div', { class: 'dato' },
-          h('span', { class: 'dato-icono', html: ICO_ACIERTOS, 'aria-hidden': 'true' }),
-          h('span', { class: 'dato-texto' }, valorAciertos, h('span', { class: 'etq' }, 'Aciertos')))
+        dato('insignia-ronda.png', valorRonda, 'Ronda'),
+        dato('insignia-aciertos.png', valorAciertos, 'Aciertos'),
+        dato('insignia-puntos.png', valorPuntos, 'Puntos')
       ));
-      vista.appendChild(h('div', { class: 'progreso' }, barra));
+      vista.appendChild(h('div', { class: 'progreso-fila' }, h('div', { class: 'progreso' }, barraI), barraEtq));
       vista.appendChild(h('div', { class: 'centro' },
         h('div', { class: 'panel tarjeta-mito' },
-          h('div', { class: 'mito-fila' },
-            h('span', { class: 'mito-sello', html: ICO_SELLO, 'aria-hidden': 'true' }),
-            h('div', { class: 'mito-texto' },
-              h('span', { class: 'comilla', 'aria-hidden': 'true' }, '“'),
-              frase)
-          ),
-          veredicto
+          h('span', { class: 'rotulo' }, 'Pregunta'),
+          frase,
+          veredicto,
+          destellos
         ),
-        botones
+        botones,
+        guia
       ));
-      vista.appendChild(h('p', { class: 'spa-pie' },
-        h('span', { class: 'spa-loto', html: LOTO, 'aria-hidden': 'true' }),
-        h('span', {}, 'Ciencia · Belleza · Bienestar')));
+      vista.appendChild(h('p', { class: 'pie-botanico' },
+        img('hoja.png', 'pie-hoja'),
+        h('span', {}, 'Ciencia · Estética · Bienestar')));
       pintar();
+
+      /** El bocadillo cambia de cara: '' normal, 'ok' verde, 'mal' rosa. */
+      function animo(estado) {
+        bocadillo.classList.remove('ok', 'mal');
+        if (estado) bocadillo.classList.add(estado);
+      }
+
+      function pintarProgreso(hechas) {
+        barraI.style.width = (hechas / TOTAL * 100) + '%';
+        barraEtq.textContent = hechas + '/' + TOTAL;
+      }
 
       function pintar() {
         respondida = false;
         var actual = rondas[indice];
         api.sub('Ronda ' + (indice + 1) + ' de ' + TOTAL);
         valorRonda.textContent = (indice + 1);
-        barra.style.width = (indice / TOTAL * 100) + '%';
+        pintarProgreso(indice);
 
         frase.textContent = actual.t;
         veredicto.hidden = true;
+        veredicto.className = 'veredicto';
+        destellos.classList.remove('brilla');
+        animo('');
+        aviso.textContent = 'Lee la frase y decide: ¿verdad o mito?';
         botones.classList.remove('inactivos');
         botonVerdad.classList.remove('acierto', 'error');
         botonMito.classList.remove('acierto', 'error');
@@ -193,12 +265,28 @@
           (actual.v ? botonVerdad : botonMito).classList.add('acierto');
         }
 
-        if (correcto) { aciertos++; valorAciertos.textContent = aciertos; api.sonar('bien'); }
-        else { api.sonar('mal'); }
+        if (correcto) {
+          aciertos++;
+          puntos += PUNTOS_ACIERTO;
+          valorAciertos.textContent = aciertos;
+          valorPuntos.textContent = puntos;
+          api.sonar('bien');
+          destellos.classList.add('brilla');
+          animo('ok');
+          aviso.textContent = '¡Muy bien! Sigue así.';
+        } else {
+          api.sonar('mal');
+          animo('mal');
+          aviso.textContent = 'Casi. Fíjate en la explicación.';
+        }
+        pintarProgreso(indice + 1);
 
         veredicto.innerHTML = '';
+        veredicto.className = 'veredicto ' + (correcto ? 'ok' : 'mal');
         veredicto.appendChild(h('p', { class: 'veredicto-titulo' },
-          (correcto ? '¡Bien! Es ' : 'En realidad es ') + (actual.v ? 'VERDAD' : 'UN MITO')));
+          correcto
+            ? '¡Correcto! Es ' + (actual.v ? 'verdad' : 'un mito') + '  ·  +' + PUNTOS_ACIERTO + ' puntos'
+            : 'Incorrecto. En realidad es ' + (actual.v ? 'verdad' : 'un mito')));
         veredicto.appendChild(h('p', { class: 'veredicto-texto' }, actual.d));
         veredicto.hidden = false;
 
@@ -210,7 +298,7 @@
 
       function avanzar() {
         if (indice < TOTAL - 1) { indice++; pintar(); }
-        else { barra.style.width = '100%'; terminar(); }
+        else { pintarProgreso(TOTAL); terminar(); }
       }
 
       /* Minuto y medio para toda la ronda. */
@@ -225,6 +313,7 @@
           premio: aciertos >= OBJETIVO ? premio() : null,
           datos: [
             { val: aciertos, etq: 'Aciertos' },
+            { val: puntos, etq: 'Puntos' },
             { val: indice + '/' + TOTAL, etq: 'Frases' }
           ]
         });
@@ -245,13 +334,13 @@
           mensaje: mensaje,
           datos: [
             { val: aciertos, etq: 'Aciertos' },
+            { val: puntos, etq: 'Puntos' },
             { val: (TOTAL - aciertos), etq: 'Fallos' }
           ]
         });
       }
 
-      /* Al salir del juego se devuelve el color de siempre a la app. */
-      return function () { document.body.classList.remove('spa'); };
+      return null;
     }
   });
 
