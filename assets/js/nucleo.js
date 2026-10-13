@@ -307,7 +307,15 @@
     'stroke-linecap="round" stroke-linejoin="round">' +
     '<path d="M5 12h13"/><path d="M12.5 6l6 6-6 6"/></svg>';
 
+  /* Sin boleta validada no se ve ni el menu ni un juego, se llegue por
+     donde se llegue (Escape o Retroceso con teclado fisico abrian el menu
+     encima de la pantalla de la boleta). Quien la pide ya esta en pantalla. */
+  function sinBoleta() {
+    return !!global.Acceso && !global.Acceso.autorizado();
+  }
+
   function irMenu() {
+    if (sinBoleta()) return;
     desmontar();
     juegoActual = null;
     marcarEnlace(null);
@@ -362,6 +370,7 @@
   var ultimoAbrir = 0;
 
   function abrir(id) {
+    if (sinBoleta()) return;
     var juego = null;
     for (var i = 0; i < catalogo.length; i++) {
       if (catalogo[i].id === id) { juego = catalogo[i]; break; }
@@ -900,7 +909,7 @@
 
     // Atajos de teclado (util si el totem tiene control remoto o teclado)
     document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape' || e.key === 'Backspace') {
+      if ((e.key === 'Escape' || e.key === 'Backspace') && !sinBoleta()) {
         if (!dom.modal.hidden) { cerrarModal(); }
         irMenu();
       }

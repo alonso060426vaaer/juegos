@@ -68,7 +68,7 @@ async function buscarEnOdoo(numero) {
   /* Sin filtrar por empresa: valen las tres (ADVANCED, ADVANCED BODY y RVM). */
   return odoo('object', 'execute_kw', [db, uid, pwd, 'account.move', 'search_read',
     [[['name', '=', numero], ['move_type', '=', 'out_invoice']]],
-    { fields: ['state', 'invoice_date'], limit: 5 }]);
+    { fields: ['state', 'payment_state', 'invoice_date'], limit: 5 }]);
 }
 
 /** Anota la boleta. Devuelve false si ya estaba anotada. */
@@ -101,7 +101,10 @@ module.exports = async function (req, res) {
 
   try {
     var filas = await buscarEnOdoo(numero);
-    var emitidas = filas.filter(function (f) { return f.state === 'posted'; });
+    /* 'reversed' = anulada con nota de credito: sigue emitida pero no vale. */
+    var emitidas = filas.filter(function (f) {
+      return f.state === 'posted' && f.payment_state !== 'reversed';
+    });
 
     if (!emitidas.length) {
       return responder(res, 200, { ok: false, motivo: filas.length ? 'anulada' : 'no-existe',
