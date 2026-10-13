@@ -4,9 +4,10 @@
    No hay usuarios ni contrasenas: el cliente escribe el numero de su boleta
    o factura y, si esta bien escrito, pasa a jugar.
 
-   IMPORTANTE: esto comprueba el FORMATO del comprobante (que sea un numero
-   con pinta de boleta o factura de verdad), no que exista de verdad. Para
-   comprobarlo contra SUNAT o contra la caja haria falta un servidor.
+   Aqui se revisa el FORMATO. Despues, en Vercel, api/boleta.js comprueba
+   en Odoo que el comprobante exista, este emitido y sea reciente, y lo
+   anota para que no sirva dos veces. En el PC de pruebas (XAMPP) no hay
+   api/, asi que ahi solo se mira el formato.
 
    Formatos que se aceptan:
      Electronico   B001-00001234   boleta    (B + 3 y hasta 8 digitos)
@@ -62,6 +63,9 @@
 
   var ELECTRONICO = /^([BF][A-Z0-9]{3})-?(\d{1,8})$/;
   var IMPRESO     = /^(\d{3,4})-(\d{3,8})$/;
+
+  var EN_LOCAL = /^(localhost|127\.0\.0\.1|192\.168\.|10\.)/.test(location.hostname) ||
+                 location.protocol === 'file:';
 
   var autorizado = false;
   var comprobante = '';
@@ -159,16 +163,47 @@
       App.sonar('toque');
     }
 
+    function rechazar(texto) {
+      aviso.className = 'acceso-aviso mal';
+      avisoTexto.textContent = texto;
+      campo.classList.add('temblor');
+      App.sonar('mal');
+      setTimeout(function () { campo.classList.remove('temblor'); }, 400);
+    }
+
+    var comprobando = false;
+
     function probar() {
+      if (comprobando) return;
       var r = revisar(escrito);
-      if (r.error) {
-        aviso.className = 'acceso-aviso mal';
-        avisoTexto.textContent = r.error;
-        campo.classList.add('temblor');
-        App.sonar('mal');
-        setTimeout(function () { campo.classList.remove('temblor'); }, 400);
-        return;
-      }
+      if (r.error) { rechazar(r.error); return; }
+
+      /* En el PC de pruebas (XAMPP) no existe api/: ahi basta con el formato. */
+      if (EN_LOCAL) { dejarPasar(r); return; }
+
+      comprobando = true;
+      entrar.disabled = true;
+      aviso.className = 'acceso-aviso';
+      avisoTexto.textContent = 'Comprobando tu boleta…';
+
+      fetch('api/boleta', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ numero: r.numero })
+      })
+        .then(function (resp) { return resp.json(); })
+        .catch(function () {
+          return { ok: false, mensaje: 'Sin conexión. Inténtalo otra vez o avisa en recepción.' };
+        })
+        .then(function (d) {
+          comprobando = false;
+          entrar.disabled = false;
+          if (d.ok) dejarPasar(r);
+          else rechazar(d.mensaje || 'No pudimos comprobar la boleta.');
+        });
+    }
+
+    function dejarPasar(r) {
       autorizado = true;
       comprobante = r.numero;
       /* Este toque es un gesto del usuario, que es lo unico que el navegador
@@ -223,7 +258,7 @@
           teclado, entrar),
         h('p', { class: 'acceso-nota' },
           h('span', { class: 'acceso-nota-ico', 'aria-hidden': 'true', html: ICO_SELLO }),
-          h('span', {}, 'Solo sirve para entrar. No se guarda ningún dato tuyo.'))
+          h('span', {}, 'Cada boleta sirve una sola vez. No se guarda ningún dato tuyo.'))
       )
     );
 
