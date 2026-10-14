@@ -25,6 +25,7 @@
 'use strict';
 
 var blob = require('@vercel/blob');
+var firmar = require('./_premios').firmar;
 
 function responder(res, codigo, cuerpo) {
   res.setHeader('Cache-Control', 'no-store');
@@ -129,7 +130,9 @@ module.exports = async function (req, res) {
 
     for (var i = 0; i < compras.length; i++) {
       if (await marcarUsada(compras[i].name)) {
-        return responder(res, 200, { ok: true, quedan: compras.length - i - 1 });
+        /* el turno firmado es lo que luego permite pedir el premio */
+        return responder(res, 200, { ok: true, quedan: compras.length - i - 1,
+                                     turno: firmar(compras[i].name) });
       }
     }
 

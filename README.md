@@ -154,12 +154,26 @@ no en el código:
 
 ## Premios al cumplir el objetivo
 
-Cuando alguien cumple el objetivo de un juego salta la **celebración**: confeti,
-fanfarria y una tarjeta con el premio que le ha tocado, más el recordatorio de
-enseñarlo en recepción. Si no llega al objetivo, la pantalla final es la normal.
+Cuando alguien cumple el objetivo de un juego (con su DNI, no en práctica)
+salen los **sobres**. El premio **no lo decide la pantalla sino el servidor**
+(`api/premio.js`):
 
-Los premios están en `assets/js/premios.js`, **son ejemplos** y se cambian ahí
-mismo (icono, nombre y letra pequeña). Los objetivos, uno por juego:
+- sale del **inventario real**: la hoja `INVENTARIO_MUESTRAS` de
+  `Muestras.xlsx`, cargada en Vercel Blob (`premios/inventario.json`);
+- al ganar se sortea entre lo que queda (más probable lo que tiene más stock)
+  y **se descuenta**; un turno da un solo premio, aunque se recargue;
+- hay **tantos sobres como premios distintos queden**, hasta 3; si no queda
+  nada, no hay sobres;
+- los **premios especiales** (puntas InMode y BTL) salen cada uno con
+  probabilidad `PROB_ESPECIAL` (0,15 %) y se ven en una tarjeta dorada con el
+  nombre del servicio; el resto sale con su foto (`assets/img/premios/`) o
+  con su nombre en una tarjeta;
+- si pierde sus 2 intentos, no hay sobres.
+
+**Inventario:** `inventario.html` (con la clave `ADMIN_CLAVE`) muestra cuánto
+queda, quién ganó qué y lo **baja en Excel**.
+
+Los objetivos, uno por juego:
 
 | Juego | Objetivo para ganar premio |
 |---|---|

@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Inventario de premios</title>
+<style>
+  :root{
+    --crema:#FBF7F1; --blanco:#fff; --oro:#B9924F; --oro-claro:#D9BC86; --oro-osc:#8B6A38;
+    --tinta:#3B322A; --tinta-2:#7B6E60; --rojo:#C0614F; --verde:#4E8C6A;
+    --linea:1px solid rgba(185,146,79,.28);
+    --serif:"Cormorant Garamond", Georgia, "Times New Roman", serif;
+    --sans:"Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  body{ margin:0; font-family:var(--sans); color:var(--tinta); background:var(--crema); }
+  main{ max-width:62em; margin:0 auto; padding:1.5em 1em 3em; }
+  h1{ font-family:var(--serif); font-size:2.2em; margin:.2em 0 .1em; }
+  .sub{ color:var(--tinta-2); margin:0 0 1.2em; }
+  .caja{ background:var(--blanco); border:var(--linea); border-radius:1em; padding:1.2em; box-shadow:0 .5em 1.4em rgba(90,70,40,.08); }
+  .entrar{ display:flex; gap:.6em; flex-wrap:wrap; max-width:28em; }
+  input{ flex:1; min-width:12em; font:inherit; padding:.7em 1em; border:var(--linea); border-radius:999px; background:#FDFAF3; }
+  button{ font:inherit; font-weight:600; padding:.7em 1.3em; border:0; border-radius:999px; color:#fff; cursor:pointer;
+          background:linear-gradient(135deg, var(--oro-claro), var(--oro)); }
+  button.suave{ color:var(--oro-osc); background:var(--blanco); border:var(--linea); }
+  .error{ color:var(--rojo); margin:.7em 0 0; min-height:1.2em; }
+  .cifras{ display:grid; grid-template-columns:repeat(auto-fit, minmax(10em, 1fr)); gap:.8em; margin:1em 0; }
+  .cifra{ background:var(--blanco); border:var(--linea); border-radius:.9em; padding:.8em 1em; }
+  .cifra b{ display:block; font-family:var(--serif); font-size:2em; line-height:1.1; }
+  .cifra span{ font-size:.78em; letter-spacing:.08em; text-transform:uppercase; color:var(--tinta-2); }
+  .barra{ display:flex; gap:.6em; flex-wrap:wrap; align-items:center; margin:1.2em 0 .6em; }
+  .barra h2{ flex:1; font-family:var(--serif); font-size:1.5em; margin:0; }
+  .tabla{ overflow-x:auto; background:var(--blanco); border:var(--linea); border-radius:1em; }
+  table{ width:100%; border-collapse:collapse; font-size:.92em; }
+  th, td{ padding:.55em .8em; text-align:left; border-bottom:1px solid rgba(185,146,79,.15); white-space:nowrap; }
+  th{ font-size:.75em; letter-spacing:.08em; text-transform:uppercase; color:var(--tinta-2); background:#FDFAF3; }
+  td.n{ text-align:right; font-variant-numeric:tabular-nums; }
+  tr.agotado td{ color:var(--tinta-2); text-decoration:line-through; }
+  .tag{ display:inline-block; padding:.1em .6em; border-radius:999px; font-size:.75em; font-weight:700; letter-spacing:.06em; }
+  .tag.esp{ color:#fff; background:linear-gradient(135deg, var(--oro-claro), var(--oro)); }
+  .tag.fin{ color:var(--rojo); background:rgba(192,97,79,.1); }
+  [hidden]{ display:none !important; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Inventario de premios</h1>
+  <p class="sub">Zona de Juegos · Joana Bernedo Body Aesthetics. Se descuenta solo cada vez que alguien abre su sobre.</p>
+
+  <section class="caja" id="puerta">
+    <form class="entrar" id="form">
+      <input id="clave" type="password" placeholder="Clave del inventario" autocomplete="current-password">
+      <button type="submit">Ver inventario</button>
+    </form>
+    <p class="error" id="error"></p>
+  </section>
+
+  <section id="panel" hidden>
+    <div class="cifras" id="cifras"></div>
+    <div class="barra">
+      <h2>Premios</h2>
+      <button class="suave" id="refrescar">Actualizar</button>
+      <button id="excel">Descargar Excel</button>
+    </div>
+    <div class="tabla"><table id="tabla-items"></table></div>
+    <div class="barra"><h2>Entregados en el juego</h2></div>
+    <div class="tabla"><table id="tabla-entregas"></table></div>
+  </section>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var API = /\.vercel\.app$/.test(location.hostname)
+    ? 'api/inventario' : 'https://juegos-silk.vercel.app/api/inventario';
+  var datos = null;
+  var $ = function (id) { return document.getElementById(id); };
+
+  function guardada() { try { return sessionStorage.getItem('clave-inventario') || ''; } catch (e) { return ''; } }
+  function guardar(c) { try { sessionStorage.setItem('clave-inventario', c); } catch (e) {} }
+
+  function fechaLima(iso) {
+    return new Date(iso).toLocaleString('es-PE', { timeZone: 'America/Lima', dateStyle: 'short', timeStyle: 'short' });
+  }
+
+  function celda(fila, texto, clase) {
+    var td = document.createElement(fila ? 'td' : 'th');
+    if (clase) td.className = clase;
+    if (texto instanceof Node) td.appendChild(texto); else td.textContent = texto;
+    return td;
+  }
+
+  function tag(texto, clase) {
+    var s = document.createElement('span'); s.className = 'tag ' + clase; s.textContent = texto; return s;
+  }
+
+  function pintar() {
+    var items = datos.items, entregas = datos.entregas || [];
+    var inicial = items.reduce(function (s, i) { return s + i.inicial; }, 0);
+    var quedan = items.reduce(function (s, i) { return s + i.cantidad; }, 0);
+    var agotados = items.filter(function (i) { return i.cantidad <= 0; }).length;
+    $('cifras').innerHTML = '';
+    [[quedan, 'Unidades que quedan'], [inicial - quedan, 'Premios entregados'],
+     [items.length - agotados, 'Premios con stock'], [agotados, 'Agotados']].forEach(function (c) {
+      var d = document.createElement('div'); d.className = 'cifra';
+      d.innerHTML = '<b></b><span></span>';
+      d.firstChild.textContent = c[0]; d.lastChild.textContent = c[1];
+      $('cifras').appendChild(d);
+    });
+
+    var t = $('tabla-items'); t.innerHTML = '';
+    var cab = document.createElement('tr');
+    ['N°', 'Producto', 'Marca', 'Presentación', 'Inicial', 'Entregados', 'Quedan', ''].forEach(function (x, k) {
+      cab.appendChild(celda(false, x, k >= 4 && k <= 6 ? 'n' : ''));
+    });
+    t.appendChild(cab);
+    items.forEach(function (i, k) {
+      var tr = document.createElement('tr');
+      if (i.cantidad <= 0) tr.className = 'agotado';
+      tr.appendChild(celda(true, k + 1, 'n'));
+      tr.appendChild(celda(true, i.servicio ? i.producto + ' (' + i.servicio + ')' : i.producto));
+      tr.appendChild(celda(true, i.marca || ''));
+      tr.appendChild(celda(true, i.presentacion || ''));
+      tr.appendChild(celda(true, i.inicial, 'n'));
+      tr.appendChild(celda(true, i.inicial - i.cantidad, 'n'));
+      tr.appendChild(celda(true, i.cantidad, 'n'));
+      tr.appendChild(celda(true, i.cantidad <= 0 ? tag('Agotado', 'fin') : (i.especial ? tag('Especial', 'esp') : '')));
+      t.appendChild(tr);
+    });
+
+    var e = $('tabla-entregas'); e.innerHTML = '';
+    var cab2 = document.createElement('tr');
+    ['Fecha', 'Boleta', 'Premio'].forEach(function (x) { cab2.appendChild(celda(false, x)); });
+    e.appendChild(cab2);
+    if (!entregas.length) {
+      var vacio = document.createElement('tr'); vacio.appendChild(celda(true, 'Todavía no se ha entregado ningún premio.'));
+      e.appendChild(vacio);
+    }
+    entregas.slice().reverse().forEach(function (x) {
+      var tr = document.createElement('tr');
+      tr.appendChild(celda(true, fechaLima(x.fecha)));
+      tr.appendChild(celda(true, x.boleta));
+      tr.appendChild(celda(true, x.producto));
+      e.appendChild(tr);
+    });
+  }
+
+  function cargar(clave) {
+    $('error').textContent = '';
+    return fetch(API, { headers: { 'X-Clave': clave }, cache: 'no-store' })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d.ok) throw new Error(d.mensaje || 'No se pudo leer el inventario.');
+        datos = d; guardar(clave);
+        $('puerta').hidden = true; $('panel').hidden = false;
+        pintar();
+      })
+      .catch(function (err) { $('error').textContent = err.message; $('puerta').hidden = false; });
+  }
+
+  function excel() {
+    var hoja1 = [['N°', 'PRODUCTO', 'MARCA', 'PRESENTACIÓN', 'CANTIDAD INICIAL', 'ENTREGADOS EN EL JUEGO', 'CANTIDAD ACTUAL']];
+    datos.items.forEach(function (i, k) {
+      hoja1.push([k + 1, i.producto, i.marca || '', i.presentacion || '', i.inicial, i.inicial - i.cantidad, i.cantidad]);
+    });
+    var hoja2 = [['FECHA', 'BOLETA', 'PREMIO']];
+    (datos.entregas || []).forEach(function (x) { hoja2.push([fechaLima(x.fecha), x.boleta, x.producto]); });
+
+    var libro = XLSX.utils.book_new();
+    var h1 = XLSX.utils.aoa_to_sheet(hoja1);
+    h1['!cols'] = [{ wch: 5 }, { wch: 48 }, { wch: 16 }, { wch: 30 }, { wch: 17 }, { wch: 22 }, { wch: 17 }];
+    var h2 = XLSX.utils.aoa_to_sheet(hoja2);
+    h2['!cols'] = [{ wch: 18 }, { wch: 16 }, { wch: 48 }];
+    XLSX.utils.book_append_sheet(libro, h1, 'INVENTARIO_MUESTRAS');
+    XLSX.utils.book_append_sheet(libro, h2, 'ENTREGAS_JUEGO');
+    var hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
+    XLSX.writeFile(libro, 'Inventario-premios-' + hoy + '.xlsx');
+  }
+
+  $('form').addEventListener('submit', function (ev) { ev.preventDefault(); cargar($('clave').value.trim()); });
+  $('refrescar').addEventListener('click', function () { cargar(guardada()); });
+  $('excel').addEventListener('click', excel);
+  if (guardada()) cargar(guardada());
+})();
+</script>
+</body>
+</html>

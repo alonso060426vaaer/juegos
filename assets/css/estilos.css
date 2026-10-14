@@ -683,6 +683,65 @@ button{ font:inherit; color:inherit; touch-action:manipulation; }
   color:var(--oro-osc);
 }
 .premio-nota{ font-size:.9em; color:var(--tinta-2); text-align:center; }
+
+/* --- la tarjeta que sale del sobre (premio del inventario real) --- */
+.premio-tarjeta{
+  position:relative;
+  width:min(100%, 17em);
+  margin:.55em auto .15em;
+  padding:1em 1.1em 1.05em;
+  display:flex; flex-direction:column; align-items:center; gap:.25em;
+  text-align:center;
+  background:linear-gradient(180deg, #FFFFFF 0%, #FFFBF3 100%);
+  border:1px solid rgba(185,146,79,.4);
+  border-radius:.9em;
+  box-shadow:0 .5em 1.3em rgba(120,90,45,.16), inset 0 0 0 .3em #fff, inset 0 0 0 calc(.3em + 1px) rgba(185,146,79,.28);
+}
+.premio-foto{
+  width:min(100%, 11em);
+  aspect-ratio:1;
+  object-fit:cover;
+  border-radius:.6em;
+  margin-bottom:.35em;
+  box-shadow:0 .25em .7em rgba(120,90,45,.15);
+}
+.premio-tarjeta-marca{
+  font-size:.68em; font-weight:700;
+  letter-spacing:.22em; text-transform:uppercase;
+  color:var(--oro);
+}
+.premio-tarjeta-nombre{
+  font-family:var(--serif);
+  font-size:1.45em; font-weight:600; line-height:1.15;
+  color:var(--tinta);
+}
+.premio-tarjeta-detalle{ font-size:.82em; color:var(--tinta-2); }
+
+/* premios especiales: tarjeta oscura con letras de oro, sin foto */
+.premio-tarjeta.especial{
+  padding:1.4em 1.2em 1.3em;
+  color:#F6E7C6;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(233,201,140,.28), transparent 60%),
+    linear-gradient(160deg, #3B2E22 0%, #241B13 100%);
+  border:1px solid #C9A262;
+  box-shadow:0 .7em 1.8em rgba(60,40,20,.35), inset 0 0 0 .35em #2B2118, inset 0 0 0 calc(.35em + 1px) rgba(217,188,134,.55);
+}
+.premio-tarjeta-sello{
+  font-size:.66em; font-weight:700;
+  letter-spacing:.26em; text-transform:uppercase;
+  color:#E9C98C;
+}
+.premio-tarjeta.especial .premio-tarjeta-nombre{
+  margin:.25em 0 .1em;
+  font-size:1.75em;
+  color:transparent;
+  background:linear-gradient(180deg, #FFF3D6 0%, #E9C98C 55%, #C9A262 100%);
+  -webkit-background-clip:text; background-clip:text;
+}
+.premio-tarjeta.especial .premio-tarjeta-detalle{ color:rgba(246,231,198,.75); }
+.resto-item.especial{ color:var(--oro-osc); font-weight:600; }
+
 .premio-pie{
   margin-top:.5em;
   font-size:.75em; letter-spacing:.1em; text-transform:uppercase;

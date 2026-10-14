@@ -66,6 +66,10 @@
   var autorizado = false;
   var practica = false;         // entro a probar, sin DNI y sin premio
   var comprobante = '';
+  var turno = '';               // firmado por api/dni: con el se pide el premio
+
+  /* Direccion del resto de la API (premio), junto a la del DNI. */
+  var BASE_API = API.replace(/dni$/, '');
 
   /**
    * Devuelve el DNI (solo numeros) si esta bien escrito, o un texto
@@ -160,7 +164,7 @@
         .then(function (d) {
           comprobando = false;
           entrar.disabled = false;
-          if (d.ok) dejarPasar(r);
+          if (d.ok) { turno = d.turno || ''; dejarPasar(r); }
           else rechazar(d.mensaje || 'No pudimos comprobar tu compra.');
         });
     }
@@ -246,7 +250,22 @@
     autorizado: function () { return autorizado; },
     practica: function () { return practica; },
     comprobante: function () { return comprobante; },
-    olvidar: function () { autorizado = false; practica = false; comprobante = ''; }
+    olvidar: function () { autorizado = false; practica = false; comprobante = ''; turno = ''; },
+
+    /**
+     * Pide al servidor el premio de este turno (ya ganado). Responde
+     * {ok, premio, otros, sobres}. Si se pregunta dos veces devuelve el
+     * mismo premio: el sorteo y el descuento se hacen una sola vez.
+     */
+    pedirPremio: function () {
+      return fetch(BASE_API + 'premio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ turno: turno })
+      })
+        .then(function (resp) { return resp.json(); })
+        .catch(function () { return { ok: false, mensaje: 'Sin conexión.' }; });
+    }
   };
 
 })(window);

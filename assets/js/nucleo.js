@@ -705,9 +705,10 @@
       dom.modalPremio.hidden = false;
       esperandoSobre = true;
       dom.modalSello.textContent = '🎁';
-      pintarSobres(elPremio, function () {
-        /* ya tiene su premio: la sala se prepara sola para el siguiente */
-        if (acaba && global.Acceso) volverSolo(3);
+      prepararSobres(function () {
+        /* ya tiene su premio: tiempo para ensenarlo en recepcion, y luego
+           la sala se prepara sola para el siguiente */
+        if (acaba && global.Acceso) volverSolo(15);
       });
     } else {
       dom.modalPremio.hidden = true;
@@ -776,30 +777,84 @@
   }
 
   /* ---------------------------------------------------------------
-     LOS TRES SOBRES
+     LOS SOBRES
 
-     El premio ya lo decidio el juego; los sobres son la forma de
-     entregarlo. Se eligen ademas otros dos premios distintos, que se
-     ensenan despues para que se vea que habia mas cosas en juego.
+     El premio lo decide el SERVIDOR (api/premio.js), no la pantalla: lo
+     sortea entre lo que queda en el inventario (Muestras.xlsx) y lo
+     descuenta. Hay tantos sobres como premios distintos queden, hasta 3;
+     si se acabo todo no hay sobres. Los otros sobres ensenan premios que
+     tambien quedaban, para que se vea que habia mas cosas en juego.
      --------------------------------------------------------------- */
-  function otrosPremios(ganado, cuantos) {
-    var lista = (global.PREMIOS || []).filter(function (p) {
-      return p.nombre !== ganado.nombre;
+  function prepararSobres(alAbrir) {
+    var caja = dom.modalPremio;
+    caja.innerHTML = '';
+    caja.classList.remove('eligiendo');
+    caja.appendChild(h('p', { class: 'sobres-pista' }, 'Preparando tus sobres…'));
+
+    global.Acceso.pedirPremio().then(function (d) {
+      if (dom.modal.hidden) return;           // ya se fue de esta pantalla
+      caja.innerHTML = '';
+      if (!d.ok) {
+        caja.appendChild(h('p', { class: 'sobres-pista' },
+          d.mensaje || 'No pudimos preparar tus sobres.'));
+        caja.appendChild(h('button', { class: 'btn btn-final btn-final-salir',
+          onclick: function () { sonar('toque'); prepararSobres(alAbrir); } }, 'Intentar otra vez'));
+        return;
+      }
+      if (!d.premio) {
+        /* llego a la meta, pero ya no queda ningun premio que dar */
+        caja.hidden = true;
+        dom.modalSello.textContent = '✦';
+        dom.modalMensaje.textContent = '¡Lo lograste! Los premios de hoy ya se entregaron todos. ¡Gracias por jugar!';
+        volverSolo(6);
+        return;
+      }
+      pintarSobres(d, alAbrir);
     });
-    return mezclar(lista).slice(0, cuantos);
   }
 
-  function pintarSobres(ganado, alAbrir) {
+  /* EXILIS VAGINAL V24 -> Exilis Vaginal V24 (en el Excel hay nombres en mayusculas) */
+  function bonito(texto) {
+    texto = String(texto || '');
+    if (texto !== texto.toUpperCase()) return texto;
+    return texto.toLowerCase().replace(/(^|[\s(\-/])(\S)/g, function (m, a, b) {
+      return a + b.toUpperCase();
+    });
+  }
+
+  function nombrePremio(p) { return p.especial && p.servicio ? p.servicio : bonito(p.producto); }
+
+  /** La tarjeta que sale del sobre: foto si la hay; si no, el nombre bien
+      puesto. Los premios especiales salen con una tarjeta dorada propia. */
+  function tarjetaPremio(p) {
+    if (p.especial) {
+      return h('div', { class: 'premio-tarjeta especial' },
+        h('span', { class: 'premio-tarjeta-sello' }, '✦ Premio especial ✦'),
+        h('strong', { class: 'premio-tarjeta-nombre' }, nombrePremio(p)),
+        h('span', { class: 'premio-tarjeta-detalle' },
+          (p.marca ? p.marca + ' · ' : '') + bonito(p.producto)));
+    }
+    return h('div', { class: 'premio-tarjeta' + (p.foto ? ' con-foto' : '') },
+      p.foto ? h('img', { class: 'premio-foto', src: p.foto, alt: '' }) : null,
+      p.marca ? h('span', { class: 'premio-tarjeta-marca' }, p.marca) : null,
+      h('strong', { class: 'premio-tarjeta-nombre' }, nombrePremio(p)),
+      p.presentacion ? h('span', { class: 'premio-tarjeta-detalle' }, p.presentacion) : null);
+  }
+
+  function pintarSobres(d, alAbrir) {
     var caja = dom.modalPremio;
-    var otros = otrosPremios(ganado, 2);
+    var ganado = d.premio;
+    var otros = d.otros || [];
+    var cuantos = Math.max(1, Math.min(3, d.sobres || 1));
     var elegido = false;
 
     caja.classList.add('eligiendo');
     caja.appendChild(h('span', { class: 'premio-cinta' }, '¡Has ganado un premio!'));
-    caja.appendChild(h('p', { class: 'sobres-pista' }, 'Elige un sobre para descubrirlo'));
+    caja.appendChild(h('p', { class: 'sobres-pista' },
+      cuantos === 1 ? 'Toca el sobre para descubrirlo' : 'Elige un sobre para descubrirlo'));
 
-    var fila = h('div', { class: 'sobres' });
-    for (var i = 0; i < 3; i++) {
+    var fila = h('div', { class: 'sobres sobres-' + cuantos });
+    for (var i = 0; i < cuantos; i++) {
       (function () {
         /* capas, de atras hacia delante: el fondo, la tarjeta que asoma al
            abrir, el bolsillo con su forma de V, la solapa y el lacre JB */
@@ -834,15 +889,14 @@
       caja.classList.remove('eligiendo');
       caja.innerHTML = '';
       caja.appendChild(h('span', { class: 'premio-cinta' }, '¡Has ganado!'));
-      caja.appendChild(h('span', { class: 'premio-icono', 'aria-hidden': 'true' }, ganado.icono));
-      caja.appendChild(h('strong', { class: 'premio-nombre' }, ganado.nombre));
-      caja.appendChild(h('span', { class: 'premio-nota' }, ganado.nota));
+      caja.appendChild(tarjetaPremio(ganado));
 
       if (otros.length) {
-        var resto = h('div', { class: 'sobres-resto' }, h('b', {}, 'En los otros sobres había'));
+        var resto = h('div', { class: 'sobres-resto' },
+          h('b', {}, otros.length === 1 ? 'En el otro sobre había' : 'En los otros sobres había'));
         otros.forEach(function (p) {
-          resto.appendChild(h('span', { class: 'resto-item' },
-            h('span', { 'aria-hidden': 'true' }, p.icono), p.nombre));
+          resto.appendChild(h('span', { class: 'resto-item' + (p.especial ? ' especial' : '') },
+            h('span', { 'aria-hidden': 'true' }, p.especial ? '✦' : '•'), nombrePremio(p)));
         });
         caja.appendChild(resto);
       }
