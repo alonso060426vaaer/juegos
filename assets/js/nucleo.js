@@ -314,6 +314,12 @@
     return !!global.Acceso && !global.Acceso.autorizado();
   }
 
+  /* Practica: entro desde la pantalla de la boleta sin boleta. Puede probar
+     todos los juegos las veces que quiera, pero nunca hay sobres. */
+  function enPractica() {
+    return !!global.Acceso && !!global.Acceso.practica && global.Acceso.practica();
+  }
+
   function irMenu() {
     if (sinBoleta()) return;
     desmontar();
@@ -349,10 +355,18 @@
         h('p', { class: 'lema' }, 'Mientras esperas, entretente'),
         h('p', { class: 'filete-corazon', 'aria-hidden': 'true' }, '\u2665'),
         h('p', { class: 'menu-invita' },
-          h('span', {}, 'Elige un juego y disfruta un momento para ti'),
+          h('span', {}, enPractica()
+            ? 'Prueba los juegos las veces que quieras'
+            : 'Elige un juego y disfruta un momento para ti'),
           global.Acceso
-            ? h('span', { class: 'menu-intentos' }, global.INTENTOS + ' intentos')
-            : null)
+            ? h('span', { class: 'menu-intentos' + (enPractica() ? ' practica' : '') },
+                enPractica() ? 'Modo práctica · sin premio' : global.INTENTOS + ' intentos')
+            : null),
+        enPractica()
+          ? h('button', { class: 'menu-boleta', onclick: function () { sonar('toque'); salir(); } },
+              h('span', {}, 'Ya quiero jugar con mi boleta'),
+              h('span', { class: 'menu-boleta-flecha', 'aria-hidden': 'true', html: FLECHA_MENU }))
+          : null
       ),
       h('div', { class: 'tarjetas' }, tarjetas),
       h('p', { class: 'menu-pie' },
@@ -386,11 +400,14 @@
     if (ahora - ultimoAbrir < 700) return;
     ultimoAbrir = ahora;
 
-    /* Un comprobante, un juego: si intenta otro, se le devuelve al suyo. */
-    if (juegoElegido && juegoElegido !== juego.id) return;
-    juegoElegido = juego.id;
-    intentosUsados++;
-    pintarIntentos();
+    var practica = enPractica();
+    if (!practica) {
+      /* Un comprobante, un juego: si intenta otro, se le devuelve al suyo. */
+      if (juegoElegido && juegoElegido !== juego.id) return;
+      juegoElegido = juego.id;
+      intentosUsados++;
+    }
+    pintarIntentos(practica);
 
     desmontar();
     juegoActual = juego;
@@ -399,8 +416,8 @@
     dom.barra.hidden = false;
     /* Con comprobante no hay salida a medias: se juega hasta el final y
        se termina en los sobres o en la despedida. La flecha solo se ve sin
-       comprobante. */
-    dom.volver.style.visibility = global.Acceso ? 'hidden' : '';
+       comprobante o en practica. */
+    dom.volver.style.visibility = global.Acceso && !practica ? 'hidden' : '';
     dom.titulo.textContent = juego.nombre;
     dom.sub.textContent = juego.sub || '';
 
@@ -417,8 +434,15 @@
   }
 
   /** Marca cuantos intentos le quedan al cliente en la barra de arriba. */
-  function pintarIntentos() {
+  function pintarIntentos(practica) {
     if (!dom.intentos) return;
+    dom.intentos.classList.toggle('practica', !!practica);
+    if (practica) {
+      dom.intentos.hidden = false;
+      dom.intentos.classList.remove('ultimo');
+      dom.intentos.textContent = 'Práctica';
+      return;
+    }
     if (!juegoElegido || !global.Acceso) { dom.intentos.hidden = true; return; }
     dom.intentos.hidden = false;
     dom.intentos.textContent = 'Intento ' + Math.min(intentosUsados, global.INTENTOS) +
@@ -633,6 +657,8 @@
   function abrirModal(op) {
     var viejo = dom.modal.querySelector('.modal-caja > .premio-volver');
     if (viejo) viejo.parentNode.removeChild(viejo);
+    var extras = dom.modal.querySelectorAll('.practica-extra');
+    for (var x = 0; x < extras.length; x++) extras[x].parentNode.removeChild(extras[x]);
     dom.modalSello.textContent = op.sello || '✦';
     dom.modalTitulo.textContent = op.titulo || 'Fin del juego';
     dom.modalMensaje.textContent = op.mensaje || '';
@@ -661,9 +687,11 @@
        llego a la meta en ninguno, no hay sobres: se le despide con un
        'buena suerte, nos vemos el proximo ano' y vuelve solo al inicio.
        --------------------------------------------------------------- */
+    dom.modalPremio.innerHTML = '';
+    if (enPractica()) { finPractica(op); return; }
+
     if (op.premio) premioGanado = op.premio;
 
-    dom.modalPremio.innerHTML = '';
     var esperandoSobre = false;
     var quedan = global.Acceso ? (global.INTENTOS - intentosUsados) : 1;
     /* Su turno acaba al gastar los dos intentos o al GANAR: si llega a la
@@ -708,6 +736,10 @@
     /* con sobres sin abrir no se cuenta todavia: la cuenta arranca al abrirlo */
     if (acaba && global.Acceso && !esperandoSobre) volverSolo(3);
 
+    mostrarModal();
+  }
+
+  function mostrarModal() {
     /* Recien abierto no acepta toques: si el cliente venia dando golpes a
        la pantalla, el ultimo caia sobre un boton del modal y se saltaba el
        final de la partida sin verlo. */
@@ -716,6 +748,35 @@
     relojModal = setTimeout(function () { dom.modal.classList.remove('recien'); }, 450);
 
     dom.modal.hidden = false;
+  }
+
+  /** Final de una partida de practica: nunca hay sobres. Si llego a la
+      meta se le dice que con su boleta habria ganado, para animarle. */
+  function finPractica(op) {
+    clearTimeout(relojSalida);
+    dom.modalPremio.hidden = true;
+    dom.modalSello.textContent = op.premio ? '✦' : (op.sello || '✦');
+    dom.modal.classList.toggle('con-datos', (op.datos || []).length > 0);
+    if (op.premio) {
+      dom.modalTitulo.textContent = '¡Lo lograste!';
+      dom.modalMensaje.textContent = 'Con tu boleta, esta partida te daría un premio.';
+    } else {
+      dom.modalMensaje.textContent = (op.mensaje ? op.mensaje + ' ' : '') +
+        'Con tu boleta tienes ' + global.INTENTOS + ' intentos para ganar.';
+    }
+
+    dom.modalRepetir.hidden = false;
+    botonFinal(dom.modalRepetir, 'Practicar otra vez', 'otraVez');
+
+    var botones = dom.modalRepetir.parentNode;
+    var otros = h('button', { class: 'btn btn-final btn-final-salir practica-extra',
+      onclick: function () { sonar('toque'); irMenu(); } }, 'Probar otro juego');
+    var conBoleta = h('button', { class: 'btn btn-final btn-final-salir practica-extra',
+      onclick: function () { sonar('toque'); salir(); } }, 'Jugar con mi boleta');
+    botones.appendChild(otros);
+    botones.appendChild(conBoleta);
+
+    mostrarModal();
   }
 
   /* ---------------------------------------------------------------
@@ -882,7 +943,10 @@
     cache();
     pintarSonido();
 
-    dom.volver.addEventListener('click', function () { sonar('toque'); salir(); });
+    dom.volver.addEventListener('click', function () {
+      sonar('toque');
+      if (enPractica()) irMenu(); else salir();
+    });
     dom.sonido.addEventListener('click', alternarSonido);
     dom.modalRepetir.addEventListener('click', function () { sonar('toque'); reiniciar(); });
     dom.atractor.addEventListener('pointerdown', despertar);

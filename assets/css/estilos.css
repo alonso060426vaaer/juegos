@@ -1185,6 +1185,60 @@ button{ font:inherit; color:inherit; touch-action:manipulation; }
 .acceso-nota-ico{ flex:none; width:1.5em; height:1.5em; color:rgba(168,134,78,.85); }
 .acceso-nota-ico svg{ width:100%; height:100%; display:block; }
 
+/* --- practica: probar los juegos sin gastar la boleta --- */
+.acceso-logo{ cursor:pointer; -webkit-tap-highlight-color:transparent; transition:transform .15s; }
+.acceso-logo:active{ transform:scale(.95); }
+.acceso-probar{
+  display:inline-flex; align-items:center; gap:.75em;
+  margin:.15em auto 0;
+  padding:.55em 1.3em .55em .7em;
+  font:inherit;
+  text-align:left;
+  color:var(--oro-osc);
+  background:rgba(255,255,255,.6);
+  border:1px dashed rgba(185,146,79,.55);
+  border-radius:999px;
+  cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+  transition:background .15s, transform .1s, border-color .15s;
+}
+.acceso-probar:active{ transform:scale(.97); background:rgba(217,188,134,.18); }
+@media (hover:hover){
+  .acceso-probar:hover{ background:#fff; border-color:var(--oro); border-style:solid; }
+}
+.acceso-probar-ico{ flex:none; width:2em; height:2em; color:var(--oro); }
+.acceso-probar-ico svg{ width:100%; height:100%; display:block; }
+.acceso-probar-texto{ display:flex; flex-direction:column; line-height:1.2; }
+.acceso-probar-texto strong{ font-family:var(--serif); font-size:1.12em; font-weight:600; color:var(--tinta); }
+.acceso-probar-texto span{ font-size:.74em; letter-spacing:.04em; color:var(--tinta-2); }
+
+/* en el menu de practica: la etiqueta y la vuelta a la boleta */
+.menu-intentos.practica{
+  color:#fff;
+  background:linear-gradient(160deg, var(--oro-claro), var(--oro));
+  border-color:var(--oro);
+}
+.menu-boleta{
+  display:inline-flex; align-items:center; gap:.6em;
+  margin:.3em auto 0;
+  padding:.5em 1.2em;
+  font:inherit; font-size:.9em; font-weight:600; letter-spacing:.02em;
+  color:var(--oro-osc);
+  background:var(--blanco);
+  border:var(--linea);
+  border-radius:999px;
+  box-shadow:var(--sombra);
+  cursor:pointer;
+}
+.menu-boleta:active{ transform:scale(.97); }
+.menu-boleta-flecha{ width:1.1em; height:1.1em; display:block; }
+.menu-boleta-flecha svg{ width:100%; height:100%; display:block; }
+.intentos.practica{
+  color:#fff;
+  background:linear-gradient(160deg, var(--oro-claro), var(--oro));
+  border-color:var(--oro);
+}
+
 /* En apaisado hay poca altura: la tarjeta se parte en dos, con su filete */
 @media (min-aspect-ratio:1/1){
   .acceso-caja{

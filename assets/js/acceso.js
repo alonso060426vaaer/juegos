@@ -34,6 +34,8 @@
   var ICO_SELLO  = SVG + '<path d="M12 3l7 3v5.5c0 4.3-2.9 8.2-7 9.5-4.1-1.3-7-5.2-7-9.5V6z"/>' +
                    '<path d="M9 12.2l2.1 2.1L15.4 10"/></svg>';
   var ICO_FLECHA = SVG + '<path d="M5 12h13"/><path d="M12.5 6l6 6-6 6"/></svg>';
+  var ICO_PROBAR = SVG + '<circle cx="12" cy="12" r="9"/>' +
+                   '<path d="M10.2 8.6l5.2 3.4-5.2 3.4z" fill="currentColor"/></svg>';
   var ICO_BORRAR = SVG + '<path d="M8.6 5h10.4a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8.6L2.2 12z"/>' +
                    '<path d="M12.2 9.6l4.8 4.8"/><path d="M17 9.6l-4.8 4.8"/></svg>';
 
@@ -71,6 +73,7 @@
     : 'https://juegos-silk.vercel.app/api/boleta';
 
   var autorizado = false;
+  var practica = false;         // entro a probar, sin boleta y sin premio
   var comprobante = '';
 
   /**
@@ -243,15 +246,35 @@
     }
     document.addEventListener('keydown', tecleado);
 
+    /* Practica: para conocer los juegos sin gastar la boleta. Se entra con
+       este boton o tocando el logo; no da premio ni cuenta intentos. */
+    function practicar() {
+      if (comprobando) return;
+      autorizado = true;
+      practica = true;
+      comprobante = '';
+      App.pantallaCompleta();
+      App.sonar('toque');
+      alEntrar();
+    }
+
+    var probarJuegos = h('button', { class: 'acceso-probar', onclick: practicar },
+      h('span', { class: 'acceso-probar-ico', 'aria-hidden': 'true', html: ICO_PROBAR }),
+      h('span', { class: 'acceso-probar-texto' },
+        h('strong', {}, 'Probar los juegos'),
+        h('span', {}, 'Practica sin usar tu boleta')));
+
     var vista = h('section', { class: 'vista acceso' },
       h('div', { class: 'acceso-seda', 'aria-hidden': 'true', html: SEDA }),
       h('div', { class: 'acceso-caja' },
         h('div', { class: 'acceso-lado' },
-          h('img', { class: 'acceso-logo', src: 'assets/img/logo.png', alt: 'Joana Bernedo Body Aesthetics' }),
+          h('img', { class: 'acceso-logo', src: 'assets/img/logo.png', alt: 'Joana Bernedo Body Aesthetics',
+                     onclick: practicar }),
           h('h1', { class: 'acceso-titulo' }, 'Zona de Juegos'),
           h('p', { class: 'acceso-lema' }, 'Escribe el número de tu boleta o factura para jugar'),
           campo,
-          aviso
+          aviso,
+          probarJuegos
         ),
         h('div', { class: 'acceso-panel' },
           h('p', { class: 'acceso-firma', 'aria-hidden': 'true' }, 'Cuidamos tu mejor versión'),
@@ -270,8 +293,9 @@
     pedir: pedir,
     revisar: revisar,
     autorizado: function () { return autorizado; },
+    practica: function () { return practica; },
     comprobante: function () { return comprobante; },
-    olvidar: function () { autorizado = false; comprobante = ''; }
+    olvidar: function () { autorizado = false; practica = false; comprobante = ''; }
   };
 
 })(window);
