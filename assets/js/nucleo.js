@@ -750,20 +750,16 @@
     dom.modal.hidden = false;
   }
 
-  /** Final de una partida de practica: nunca hay sobres. Si llego a la
-      meta se le dice que con su boleta habria ganado, para animarle. */
+  /** Final de una partida de practica: en practica nadie gana. Ni sobres
+      ni premio, ni siquiera se nombran: llegue o no a la meta, solo se le
+      dice que ya sabe jugar. */
   function finPractica(op) {
     clearTimeout(relojSalida);
     dom.modalPremio.hidden = true;
-    dom.modalSello.textContent = op.premio ? '✦' : (op.sello || '✦');
+    dom.modalSello.textContent = '✦';
     dom.modal.classList.toggle('con-datos', (op.datos || []).length > 0);
-    if (op.premio) {
-      dom.modalTitulo.textContent = '¡Lo lograste!';
-      dom.modalMensaje.textContent = 'Con tu boleta, esta partida te daría un premio.';
-    } else {
-      dom.modalMensaje.textContent = (op.mensaje ? op.mensaje + ' ' : '') +
-        'Con tu boleta tienes ' + global.INTENTOS + ' intentos para ganar.';
-    }
+    dom.modalTitulo.textContent = 'Fin de la práctica';
+    dom.modalMensaje.textContent = '¡Ya sabes cómo se juega!';
 
     dom.modalRepetir.hidden = false;
     botonFinal(dom.modalRepetir, 'Practicar otra vez', 'otraVez');
