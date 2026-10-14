@@ -1,18 +1,13 @@
 /* ==========================================================================
    ACCESO - la puerta de entrada a los juegos
 
-   No hay usuarios ni contrasenas: el cliente escribe el numero de su boleta
-   o factura y, si esta bien escrito, pasa a jugar.
+   No hay usuarios ni contrasenas: el cliente escribe su DNI y, si en
+   Odoo hay una compra a ese DNI, pasa a jugar.
 
-   Aqui se revisa el FORMATO. Despues, en Vercel, api/boleta.js comprueba
-   en Odoo que el comprobante exista, este emitido y sea reciente, y lo
-   anota para que no sirva dos veces. Sin esa respuesta no se entra.
-
-   Formatos que se aceptan:
-     Electronico   B001-00001234   boleta    (B + 3 y hasta 8 digitos)
-                   F001-00001234   factura   (F + 3 y hasta 8 digitos)
-     Impreso       001-0001234     serie de 3 o 4 digitos y el correlativo
-   Se admite escribirlo sin guion y en minusculas.
+   Aqui solo se revisa que sean 8 a 12 numeros. Despues, en Vercel,
+   api/dni.js busca en Odoo las compras de ese DNI (emitidas, no anuladas
+   y recientes) y gasta una: cada compra es una oportunidad. Sin esa
+   respuesta no se entra.
    ========================================================================== */
 
 (function (global) {
@@ -27,8 +22,9 @@
   var SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
             'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">';
 
-  var ICO_BOLETA = SVG + '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/>' +
-                   '<path d="M14 3v5h5"/><path d="M9 13h6"/><path d="M9 16.5h4"/></svg>';
+  var ICO_DNI    = SVG + '<rect x="3" y="5" width="18" height="14" rx="2.2"/>' +
+                   '<circle cx="8.6" cy="11" r="2"/><path d="M5.8 16c.5-1.5 1.5-2.2 2.8-2.2s2.3.7 2.8 2.2"/>' +
+                   '<path d="M14 10h4.2"/><path d="M14 13.4h3"/></svg>';
   var ICO_PISTA  = SVG + '<circle cx="12" cy="12" r="9"/><path d="M12 11.2v5"/>' +
                    '<circle cx="12" cy="7.6" r="1" fill="currentColor" stroke="none"/></svg>';
   var ICO_SELLO  = SVG + '<path d="M12 3l7 3v5.5c0 4.3-2.9 8.2-7 9.5-4.1-1.3-7-5.2-7-9.5V6z"/>' +
@@ -60,64 +56,29 @@
     '<path d="M1240 370 C 1000 400 860 550 800 830"/>' +
     '</g></svg>';
 
-  var ELECTRONICO = /^([BF][A-Z0-9]{3})-?(\d{1,8})$/;
-  var IMPRESO     = /^(\d{3,4})-(\d{3,8})$/;
-
   /* Siempre se consulta a Odoo, se abra desde donde se abra: en Vercel
      con la ruta corta y desde XAMPP, el totem o un archivo suelto con la
      direccion completa. Si no hay respuesta, no se entra. */
   var API = /\.vercel\.app$/.test(location.hostname)
-    ? 'api/boleta'
-    : 'https://juegos-silk.vercel.app/api/boleta';
+    ? 'api/dni'
+    : 'https://juegos-silk.vercel.app/api/dni';
 
   var autorizado = false;
-  var practica = false;         // entro a probar, sin boleta y sin premio
+  var practica = false;         // entro a probar, sin DNI y sin premio
   var comprobante = '';
 
   /**
-   * Devuelve el numero ya ordenado (B001-00001234) si esta bien escrito,
-   * o un texto explicando que falla.
+   * Devuelve el DNI (solo numeros) si esta bien escrito, o un texto
+   * explicando que falla. Se admiten hasta 12 cifras por el carne de
+   * extranjeria.
    */
   function revisar(texto) {
-    var limpio = String(texto || '').toUpperCase().replace(/\s+/g, '');
+    var limpio = String(texto || '').replace(/\D/g, '');
 
-    if (!limpio) return { error: 'Escribe el número de tu boleta o factura.' };
-    if (limpio.length < 5) return { error: 'Faltan números. Míralo otra vez en tu comprobante.' };
-
-    var m = ELECTRONICO.exec(limpio);
-    var tipo = null, serie = null, correlativo = null;
-
-    if (m) {
-      tipo = m[1].charAt(0) === 'B' ? 'Boleta' : 'Factura';
-      serie = m[1];
-      correlativo = m[2];
-    } else {
-      m = IMPRESO.exec(limpio);
-      if (m) { tipo = 'Comprobante'; serie = m[1]; correlativo = m[2]; }
-    }
-
-    if (!tipo) {
-      /* serie correcta pero correlativo demasiado largo */
-      var casi = /^([BF][A-Z0-9]{3})-?(\d+)$/.exec(limpio);
-      if (casi && casi[2].length > 8) {
-        return { error: 'El número del comprobante tiene 8 dígitos como máximo.' };
-      }
-      if (/^[BF]/.test(limpio)) {
-        return { error: 'Tras la letra van 3 caracteres de serie y el número. Ejemplo: B001-00001234' };
-      }
-      if (/^\d+$/.test(limpio)) {
-        return { error: 'Falta la serie. Escríbelo con guion, así: 001-0001234' };
-      }
-      return { error: 'Ese número no parece una boleta ni una factura. Ejemplo: B001-00001234' };
-    }
-
-    /* Un correlativo de solo ceros no existe en ningun comprobante. */
-    if (/^0+$/.test(correlativo)) {
-      return { error: 'El número del comprobante no puede ser cero.' };
-    }
-
-    while (correlativo.length < 8) correlativo = '0' + correlativo;
-    return { tipo: tipo, numero: serie + '-' + correlativo };
+    if (!limpio) return { error: 'Escribe tu número de DNI.' };
+    if (limpio.length < 8) return { error: 'Faltan números: el DNI tiene 8.' };
+    if (limpio.length > 12) return { error: 'Sobran números. Revisa tu DNI.' };
+    return { tipo: 'DNI', numero: limpio };
   }
 
   /* ------------------------- Pantalla ------------------------- */
@@ -125,10 +86,10 @@
   function pedir(alEntrar) {
     var escrito = '';
 
-    var PISTA = 'Lo encuentras arriba a la derecha de tu comprobante';
+    var PISTA = 'El mismo DNI con el que hiciste tu compra';
 
     var campo = h('div', { class: 'acceso-campo' },
-      h('span', { class: 'acceso-icono', 'aria-hidden': 'true', html: ICO_BOLETA }),
+      h('span', { class: 'acceso-icono', 'aria-hidden': 'true', html: ICO_DNI }),
       h('span', { class: 'acceso-valor' }, ''),
       h('span', { class: 'acceso-cursor' }, '')
     );
@@ -149,11 +110,11 @@
     function pintarCampo() {
       valor.textContent = escrito;
       campo.classList.toggle('vacio', !escrito);
-      if (!escrito) valor.textContent = 'B001-00000000';
+      if (!escrito) valor.textContent = '00000000';
     }
 
     function escribir(caracter) {
-      if (escrito.length >= 14) return;
+      if (escrito.length >= 12) return;
       escrito += caracter;
       aviso.className = 'acceso-aviso';
       avisoTexto.textContent = PISTA;
@@ -185,12 +146,12 @@
       comprobando = true;
       entrar.disabled = true;
       aviso.className = 'acceso-aviso';
-      avisoTexto.textContent = 'Comprobando tu boleta…';
+      avisoTexto.textContent = 'Buscando tu compra…';
 
       fetch(API, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ numero: r.numero })
+        body: JSON.stringify({ dni: r.numero })
       })
         .then(function (resp) { return resp.json(); })
         .catch(function () {
@@ -200,7 +161,7 @@
           comprobando = false;
           entrar.disabled = false;
           if (d.ok) dejarPasar(r);
-          else rechazar(d.mensaje || 'No pudimos comprobar la boleta.');
+          else rechazar(d.mensaje || 'No pudimos comprobar tu compra.');
         });
     }
 
@@ -220,12 +181,11 @@
 
     /* --- teclado en pantalla: en el totem no hay teclado fisico --- */
     var teclado = h('div', { class: 'acceso-teclado' });
-    var TECLAS = ['B', 'F', '-', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '\u232B'];
+    var TECLAS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '\u232B'];
     TECLAS.forEach(function (t) {
       var esBorrar = t === '\u232B';
       var clase = 'acceso-tecla';
       if (esBorrar) clase += ' borrar';
-      if (/[BF-]/.test(t)) clase += ' letra';
       if (t === '0') clase += ' ancha';          // el cero ocupa dos huecos
       var tecla = h('button', {
         class: clase,
@@ -238,13 +198,13 @@
     /* Con teclado fisico (por si se prueba en un PC) */
     function tecleado(e) {
       var k = e.key;
-      if (/^[0-9]$/.test(k) || /^[bBfF-]$/.test(k)) { escribir(k.toUpperCase()); e.preventDefault(); }
+      if (/^[0-9]$/.test(k)) { escribir(k); e.preventDefault(); }
       else if (k === 'Backspace') { borrar(); e.preventDefault(); }
       else if (k === 'Enter') { probar(); e.preventDefault(); }
     }
     document.addEventListener('keydown', tecleado);
 
-    /* Practica: para conocer los juegos sin gastar la boleta. Se entra
+    /* Practica: para conocer los juegos sin gastar su compra. Se entra
        tocando el logo; no da premio ni cuenta intentos. */
     function practicar() {
       if (comprobando) return;
@@ -263,7 +223,7 @@
           h('img', { class: 'acceso-logo', src: 'assets/img/logo.png', alt: 'Joana Bernedo Body Aesthetics',
                      onclick: practicar }),
           h('h1', { class: 'acceso-titulo' }, 'Zona de Juegos'),
-          h('p', { class: 'acceso-lema' }, 'Escribe el número de tu boleta o factura para jugar'),
+          h('p', { class: 'acceso-lema' }, 'Escribe tu DNI para jugar'),
           campo,
           aviso
         ),
@@ -272,7 +232,7 @@
           teclado, entrar),
         h('p', { class: 'acceso-nota' },
           h('span', { class: 'acceso-nota-ico', 'aria-hidden': 'true', html: ICO_SELLO }),
-          h('span', {}, 'Cada boleta sirve una sola vez. No se guarda ningún dato tuyo.'))
+          h('span', {}, 'Cada compra te da una oportunidad. Tu DNI no se guarda.'))
       )
     );
 

@@ -1,7 +1,7 @@
 # Zona de Juegos — Joana Bernedo Body Aesthetics
 
 Menú de juegos didácticos para la pantalla vertical de la sala de espera.
-HTML, CSS y JavaScript puros: no necesita PHP, base de datos ni conexión a internet.
+HTML, CSS y JavaScript puros: la entrada con DNI necesita internet (consulta Odoo desde Vercel).
 
 ## Cómo abrirlo
 
@@ -27,29 +27,33 @@ Al primer toque la página pide pantalla completa automáticamente.
 | Patos al Vuelo | Puntería y atención (arcade clásico, en la playa) | `index.html#patos` |
 | Salto Infinito | Coordinación: sube saltando entre bloques (hay bloques fantasma) | `index.html#saltos` |
 
-## Entrada con número de boleta
+## Entrada con DNI (validado en Odoo)
 
-Antes de jugar, la pantalla pide el **número de la boleta o factura**. No hay
-usuarios ni contraseñas: se comprueba que el número **esté bien escrito** y ya
-se entra. Como el tótem no tiene teclado, sale un **teclado en pantalla** con
-las letras B y F, el guion y los dígitos.
+Antes de jugar, la pantalla pide el **DNI** del cliente, con un teclado de
+números en pantalla. No hay usuarios ni contraseñas.
 
-Formatos que acepta (`assets/js/acceso.js`):
+`api/dni.js` corre en Vercel y busca en Odoo las boletas y facturas emitidas a
+ese DNI, en cualquiera de las tres empresas (ADVANCED, ADVANCED BODY y RVM):
 
-| Tipo | Ejemplo | Regla |
-|---|---|---|
-| Boleta electrónica | `B001-00001234` | `B` + 3 caracteres de serie + hasta 8 dígitos |
-| Factura electrónica | `F001-00001234` | `F` + 3 caracteres de serie + hasta 8 dígitos |
-| Comprobante impreso | `001-0001234` | serie de 3 o 4 dígitos, guion y el correlativo |
+- tienen que estar **emitidas** (no en borrador ni anuladas, tampoco con nota
+  de crédito) y ser **recientes** (variable `DIAS_BOLETA`: `0` = solo de hoy);
+- **cada compra es una oportunidad**: al entrar se gasta la compra más antigua
+  que quede libre, y se anota en Vercel Blob para que no se vuelva a usar;
+- los DNI de relleno (`11111111`, `00000000`, `12345678`...) no dejan jugar;
+- el DNI no se guarda en ningún sitio, solo el número de la boleta gastada.
 
-Se puede escribir en minúsculas y sin guion. Rechaza lo que no tenga forma de
-comprobante, lo que le falten o sobren dígitos y los correlativos a cero.
+Si no hay respuesta del servidor, no se entra. La pantalla consulta esa API
+aunque el juego se abra desde XAMPP o el tótem.
 
-**Ojo**: esto valida el **formato**, no comprueba que la boleta exista de verdad.
-Para eso haría falta un servidor que consulte SUNAT o la caja.
+Las claves de Odoo están en las variables de entorno de Vercel, nunca en el
+código: este repositorio es público.
+
+**Práctica:** tocando el logo de la pantalla del DNI se entra a probar todos
+los juegos sin gastar ninguna compra. En práctica no se cuentan intentos y
+nunca hay premio.
 
 Cuando salta el protector de pantalla (un minuto sin tocar), se vuelve a pedir el
-número: quien llega después es otra persona.
+DNI: quien llega después es otra persona.
 
 ## Pantallas táctiles lentas (Patos al Vuelo)
 

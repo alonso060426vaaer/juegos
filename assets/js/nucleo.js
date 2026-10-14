@@ -364,7 +364,7 @@
             : null),
         enPractica()
           ? h('button', { class: 'menu-boleta', onclick: function () { sonar('toque'); salir(); } },
-              h('span', {}, 'Ya quiero jugar con mi boleta'),
+              h('span', {}, 'Ya quiero jugar con mi DNI'),
               h('span', { class: 'menu-boleta-flecha', 'aria-hidden': 'true', html: FLECHA_MENU }))
           : null
       ),
@@ -768,7 +768,7 @@
     var otros = h('button', { class: 'btn btn-final btn-final-salir practica-extra',
       onclick: function () { sonar('toque'); irMenu(); } }, 'Probar otro juego');
     var conBoleta = h('button', { class: 'btn btn-final btn-final-salir practica-extra',
-      onclick: function () { sonar('toque'); salir(); } }, 'Jugar con mi boleta');
+      onclick: function () { sonar('toque'); salir(); } }, 'Jugar con mi DNI');
     botones.appendChild(otros);
     botones.appendChild(conBoleta);
 
