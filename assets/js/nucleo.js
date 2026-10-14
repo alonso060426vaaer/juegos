@@ -828,11 +828,13 @@
       puesto. Los premios especiales salen con una tarjeta dorada propia. */
   function tarjetaPremio(p) {
     if (p.especial) {
+      /* debajo, la marca y lo que no repita el titulo */
+      var detalle = [p.marca, p.servicio && p.servicio !== p.producto ? bonito(p.producto) : p.presentacion]
+        .filter(Boolean).join(' · ');
       return h('div', { class: 'premio-tarjeta especial' },
         h('span', { class: 'premio-tarjeta-sello' }, '✦ Premio especial ✦'),
         h('strong', { class: 'premio-tarjeta-nombre' }, nombrePremio(p)),
-        h('span', { class: 'premio-tarjeta-detalle' },
-          (p.marca ? p.marca + ' · ' : '') + bonito(p.producto)));
+        detalle ? h('span', { class: 'premio-tarjeta-detalle' }, detalle) : null);
     }
     return h('div', { class: 'premio-tarjeta' + (p.foto ? ' con-foto' : '') },
       p.foto ? h('img', { class: 'premio-foto', src: p.foto, alt: '' }) : null,

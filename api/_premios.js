@@ -44,7 +44,9 @@ async function leerJson(ruta) {
   var r = await blob.get(ruta, { access: 'private', useCache: false });
   if (!r || r.statusCode !== 200) return null;
   var texto = await new Response(r.stream).text();
-  return { datos: JSON.parse(texto), etag: r.blob.etag };
+  /* Los archivos grandes llegan comprimidos y su etag viene "debil"
+     (W/"..."): con ese prefijo, ifMatch no coincide nunca. */
+  return { datos: JSON.parse(texto), etag: String(r.blob.etag || '').replace(/^W\//, '') };
 }
 
 async function guardarJson(ruta, datos, opciones) {

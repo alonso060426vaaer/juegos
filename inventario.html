@@ -121,7 +121,7 @@
       var tr = document.createElement('tr');
       if (i.cantidad <= 0) tr.className = 'agotado';
       tr.appendChild(celda(true, k + 1, 'n'));
-      tr.appendChild(celda(true, i.servicio ? i.producto + ' (' + i.servicio + ')' : i.producto));
+      tr.appendChild(celda(true, i.servicio && i.servicio !== i.producto ? i.producto + ' (' + i.servicio + ')' : i.producto));
       tr.appendChild(celda(true, i.marca || ''));
       tr.appendChild(celda(true, i.presentacion || ''));
       tr.appendChild(celda(true, i.inicial, 'n'));
