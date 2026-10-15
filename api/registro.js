@@ -127,7 +127,7 @@ module.exports = async function (req, res) {
 
     /* sesion de regalo: tambien a su hoja del aniversario */
     if (t && t.item && t.item.especial) {
-      var hoja = await aLaHoja({ dni: dni }, t.item, sobre.datos.juego);
+      var hoja = await aLaHoja({ dni: dni }, t.item, sobre.datos.juego, true);
       await tocarEntrega(sesion, function (e) { e.hoja = hoja; });
     }
 

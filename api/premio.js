@@ -72,12 +72,18 @@ async function sortearYDescontar(boleta, cliente, practica) {
 }
 
 /** Manda el premio a la hoja del Members Club. Devuelve "ok" o el motivo. */
-async function aLaHoja(cliente, ganado, juego) {
+/* `practica`: el premio salio en el juego de prueba (otra oportunidad del
+   paciente). En la hoja se lee "PREMIO DEL JUEGO: <nombre> (JUEGO DE PRUEBA)". */
+async function aLaHoja(cliente, ganado, juego, practica) {
   var url = process.env.ANIVERSARIO_URL;
   if (!url) return 'sin conexión configurada';
   if (!ganado.especial && (process.env.PREMIOS_A_HOJA || 'todos') === 'tratamientos') return 'no va a la hoja';
   if (!cliente || !cliente.dni) return 'la boleta no tiene DNI';
   var nombre = (ganado.servicio || ganado.producto) + (!ganado.especial && ganado.presentacion ? ' · ' + ganado.presentacion : '');
+  if (practica) {
+    nombre = nombre.slice(0, 80 - ' (juego de prueba)'.length) + ' (juego de prueba)';
+    juego = 'de prueba' + (juego ? ': ' + juego : '');
+  }
   var corte = new AbortController();
   var reloj = setTimeout(function () { corte.abort(); }, 7000);
   try {
