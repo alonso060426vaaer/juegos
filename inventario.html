@@ -187,7 +187,10 @@
       var tr = document.createElement('tr');
       tr.appendChild(celda(true, fechaLima(x.fecha)));
       tr.appendChild(celda(true, x.boleta));
-      tr.appendChild(celda(true, x.nombre ? x.nombre + (x.dni ? ' · ' + x.dni : '') : ''));
+      var quien = document.createElement('span');
+      quien.textContent = x.nombre ? x.nombre + (x.dni ? ' · ' + x.dni : '') + (x.paciente ? ' · ' + x.paciente : '') : '';
+      if (x.registrar) { quien.appendChild(document.createTextNode(' ')); quien.appendChild(tag('Registrar en recepción', 'fin')); }
+      tr.appendChild(celda(true, quien));
       tr.appendChild(celda(true, x.producto));
       tr.appendChild(celda(true, estadoHoja(x)));
       e.appendChild(tr);
@@ -250,14 +253,16 @@
     datos.items.forEach(function (i, k) {
       hoja1.push([k + 1, i.producto, i.marca || '', i.presentacion || '', i.inicial, i.inicial - i.cantidad, i.cantidad]);
     });
-    var hoja2 = [['FECHA', 'BOLETA', 'PREMIO']];
-    (datos.entregas || []).forEach(function (x) { hoja2.push([fechaLima(x.fecha), x.boleta, x.producto]); });
+    var hoja2 = [['FECHA', 'BOLETA', 'PACIENTE', 'DNI', 'PREMIO', 'OBSERVACIÓN']];
+    (datos.entregas || []).forEach(function (x) {
+      hoja2.push([fechaLima(x.fecha), x.boleta, x.nombre || '', x.dni || '', x.producto, x.registrar ? 'Registrar en recepción (no está en Odoo)' : '']);
+    });
 
     var libro = XLSX.utils.book_new();
     var h1 = XLSX.utils.aoa_to_sheet(hoja1);
     h1['!cols'] = [{ wch: 5 }, { wch: 48 }, { wch: 16 }, { wch: 30 }, { wch: 17 }, { wch: 22 }, { wch: 17 }];
     var h2 = XLSX.utils.aoa_to_sheet(hoja2);
-    h2['!cols'] = [{ wch: 18 }, { wch: 16 }, { wch: 48 }];
+    h2['!cols'] = [{ wch: 18 }, { wch: 14 }, { wch: 36 }, { wch: 12 }, { wch: 40 }, { wch: 36 }];
     var hoja3 = [['FECHA', 'PACIENTE', 'DNI', 'SESIÓN DE REGALO', 'BOLETA']];
     regalosDe(datos.entregas || []).forEach(function (x) {
       hoja3.push([fechaLima(x.fecha), x.nombre || '', x.dni || '', x.producto, x.boleta]);

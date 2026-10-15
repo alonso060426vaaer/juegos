@@ -265,6 +265,23 @@
      * {ok, premio, otros, sobres}. Si se pregunta dos veces devuelve el
      * mismo premio: el sorteo y el descuento se hacen una sola vez.
      */
+    /**
+     * Practica: registra el DNI de quien gano antes de abrir su sobre.
+     * Responde {ok, registrado} o {ok, falta:'nombre'} (no esta en Odoo:
+     * hay que pedirle apellidos y nombres) o {ok:false, mensaje}.
+     */
+    registrarPractica: function (dni, nombre) {
+      var cuerpo = { sesion: sesionPractica, dni: dni };
+      if (nombre !== undefined) cuerpo.nombre = nombre;
+      return fetch(BASE_API + 'registro', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(cuerpo)
+      })
+        .then(function (resp) { return resp.json(); })
+        .catch(function () { return { ok: false, mensaje: 'Sin conexión. Inténtalo otra vez.' }; });
+    },
+
     pedirPremio: function (juego) {
       return fetch(BASE_API + 'premio', {
         method: 'POST',

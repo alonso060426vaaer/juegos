@@ -655,6 +655,7 @@
   }
 
   function abrirModal(op) {
+    dom.modal.classList.remove('revelado');
     var viejo = dom.modal.querySelector('.modal-caja > .premio-volver');
     if (viejo) viejo.parentNode.removeChild(viejo);
     var extras = dom.modal.querySelectorAll('.practica-extra');
@@ -700,7 +701,8 @@
       dom.modalRepetir.hidden = true;
       dom.modalPremio.hidden = false;
       dom.modalSello.textContent = '🎁';
-      prepararSobres(function () { volverSolo(15); });
+      /* antes de los sobres, su DNI: nadie se lleva un premio sin registrar */
+      registroPractica(function () { prepararSobres(function () { volverSolo(15); }); });
       mostrarModal();
       return;
     }
@@ -828,6 +830,107 @@
     });
   }
 
+  /* ---------------------------------------------------------------
+     REGISTRO DE LA PRACTICA: quien gana sin DNI lo escribe antes de abrir
+     su sobre (api/registro.js lo busca en Odoo, solo leyendo). Si no esta,
+     escribe sus apellidos y nombres y recepcion lo registra luego.
+     --------------------------------------------------------------- */
+  var registrando = false;       // escribiendo su DNI: Retroceso no saca al menu
+
+  function registroPractica(alListo) {
+    var caja = dom.modalPremio;
+    registrando = true;
+    var paso = 'dni', escrito = '', dniOk = '', ocupado = false;
+
+    function teclado(teclas, columnas) {
+      var t = h('div', { class: 'registro-teclado', estilo: 'grid-template-columns:repeat(' + columnas + ',1fr)' });
+      teclas.forEach(function (k) {
+        var etq = k === '⌫' ? '⌫' : k === ' ' ? 'ESPACIO' : k;
+        t.appendChild(h('button', {
+          class: 'registro-tecla' + (k === ' ' ? ' ancha' : '') + (k === '⌫' ? ' borrar' : ''),
+          'aria-label': k === '⌫' ? 'Borrar' : k === ' ' ? 'Espacio' : k,
+          onclick: function () { pulsar(k); }
+        }, etq));
+      });
+      return t;
+    }
+
+    var campo = h('div', { class: 'registro-campo' }, '');
+    var aviso = h('p', { class: 'registro-aviso' }, '');
+    var titulo = h('p', { class: 'sobres-pista' }, '');
+    var zona = h('div', {});
+    var boton = h('button', { class: 'btn btn-final registro-enviar', onclick: function () { enviar(); } }, 'Registrar mi premio');
+
+    function pintar() {
+      campo.textContent = escrito || (paso === 'dni' ? 'Tu DNI' : 'Apellidos y nombres');
+      campo.classList.toggle('vacio', !escrito);
+    }
+    function pulsar(k) {
+      if (ocupado) return;
+      sonar('toque');
+      if (k === '⌫') escrito = escrito.slice(0, -1);
+      else if (paso === 'dni' && escrito.length < 12) escrito += k;
+      else if (paso === 'nombre' && escrito.length < 60 && !(k === ' ' && (!escrito || / $/.test(escrito)))) escrito += k;
+      aviso.className = 'registro-aviso'; aviso.textContent = '';
+      pintar();
+    }
+    function mal(t) { aviso.className = 'registro-aviso mal'; aviso.textContent = t; sonar('mal'); }
+
+    function pasoDni() {
+      paso = 'dni'; escrito = '';
+      titulo.textContent = 'Escribe tu DNI para registrar tu premio';
+      zona.innerHTML = '';
+      zona.appendChild(teclado(['1', '2', '3', '4', '5', '6', '7', '8', '9', '⌫', '0'], 3));
+      pintar();
+    }
+    function pasoNombre() {
+      paso = 'nombre'; escrito = '';
+      titulo.textContent = 'No te encontramos: escribe tus apellidos y nombres';
+      zona.innerHTML = '';
+      zona.appendChild(teclado('QWERTYUIOPASDFGHJKLÑZXCVBNM'.split('').concat(['⌫', ' ']), 10));
+      pintar();
+    }
+
+    function enviar() {
+      if (ocupado) return;
+      if (paso === 'dni' && escrito.length < 8) { mal('Tu DNI tiene 8 números.'); return; }
+      if (paso === 'nombre' && escrito.trim().split(/\s+/).length < 2) { mal('Escribe tus apellidos y tu nombre.'); return; }
+      ocupado = true; boton.disabled = true;
+      aviso.className = 'registro-aviso'; aviso.textContent = 'Registrando…';
+      var dni = paso === 'dni' ? escrito : dniOk;
+      global.Acceso.registrarPractica(dni, paso === 'nombre' ? escrito.trim() : undefined).then(function (d) {
+        ocupado = false; boton.disabled = false;
+        if (dom.modal.hidden) return;
+        if (!d.ok) { mal(d.mensaje || 'No se pudo registrar.'); return; }
+        if (d.falta === 'nombre') { dniOk = dni; pasoNombre(); return; }
+        document.removeEventListener('keydown', tecla);
+        registrando = false;
+        alListo();
+      });
+    }
+
+    /* con teclado fisico tambien (por si se prueba en un PC) */
+    function tecla(e) {
+      if (dom.modal.hidden) { document.removeEventListener('keydown', tecla); registrando = false; return; }
+      var k = e.key;
+      if (k === 'Enter') { enviar(); e.preventDefault(); }
+      else if (k === 'Backspace') { pulsar('⌫'); e.preventDefault(); }
+      else if (paso === 'dni' && /^[0-9]$/.test(k)) { pulsar(k); e.preventDefault(); }
+      else if (paso === 'nombre' && /^[a-zA-ZñÑ ]$/.test(k)) { pulsar(k.toUpperCase()); e.preventDefault(); }
+    }
+    document.addEventListener('keydown', tecla);
+
+    caja.innerHTML = '';
+    caja.classList.remove('eligiendo');
+    caja.appendChild(h('span', { class: 'premio-cinta' }, '¡Has ganado un premio!'));
+    caja.appendChild(titulo);
+    caja.appendChild(campo);
+    caja.appendChild(aviso);
+    caja.appendChild(zona);
+    caja.appendChild(boton);
+    pasoDni();
+  }
+
   /* EXILIS VAGINAL V24 -> Exilis Vaginal V24 (en el Excel hay nombres en mayusculas) */
   function bonito(texto) {
     texto = String(texto || '');
@@ -908,15 +1011,10 @@
       caja.appendChild(h('span', { class: 'premio-cinta' }, '¡Has ganado!'));
       caja.appendChild(tarjetaPremio(ganado));
 
-      if (otros.length) {
-        var resto = h('div', { class: 'sobres-resto' },
-          h('b', {}, otros.length === 1 ? 'En el otro sobre había' : 'En los otros sobres había'));
-        otros.forEach(function (p) {
-          resto.appendChild(h('span', { class: 'resto-item' + (p.especial ? ' especial' : '') },
-            h('span', { 'aria-hidden': 'true' }, p.especial ? '✦' : '•'), nombrePremio(p)));
-        });
-        caja.appendChild(resto);
-      }
+      /* vista limpia y quieta: solo el premio (sin los de los otros sobres,
+         sin los datos de la partida), que entre entera sin desplazarse */
+      dom.modal.classList.add('revelado');
+      dom.modalTitulo.textContent = '¡Ganaste!';
       caja.appendChild(h('span', { class: 'premio-pie' }, 'Enséñalo en recepción antes de irte'));
 
       /* se repite la animacion de entrada de la tarjeta */
@@ -950,7 +1048,7 @@
     })();
   }
 
-  function cerrarModal() { dom.modal.hidden = true; }
+  function cerrarModal() { dom.modal.hidden = true; registrando = false; }
 
   /* ------------------------- Sonido on/off ------------------------- */
 
@@ -1040,7 +1138,7 @@
 
     // Atajos de teclado (util si el totem tiene control remoto o teclado)
     document.addEventListener('keydown', function (e) {
-      if ((e.key === 'Escape' || e.key === 'Backspace') && !sinBoleta()) {
+      if ((e.key === 'Escape' || e.key === 'Backspace') && !sinBoleta() && !registrando) {
         if (!dom.modal.hidden) { cerrarModal(); }
         irMenu();
       }

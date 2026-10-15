@@ -54,6 +54,8 @@ async function sortearYDescontar(boleta, cliente, practica) {
                     producto: ganado.servicio || ganado.producto,
                     tipo: practica ? 'practica' : ganado.especial ? 'tratamiento' : 'producto' };
     if (cliente) { entrega.dni = cliente.dni; entrega.nombre = cliente.nombre; }
+    if (cliente && cliente.codigo) entrega.paciente = cliente.codigo;
+    if (cliente && cliente.enOdoo === false) entrega.registrar = true;   // no esta en Odoo: recepcion lo registra
     inv.datos.entregas.push(entrega);
     inv.datos.actualizado = new Date().toISOString();
 
@@ -147,6 +149,14 @@ module.exports = async function (req, res) {
     var cliente = null;
     if (!practica) {
       try { cliente = await Odoo.clienteDeBoleta(boleta); } catch (e) { console.error(e); }
+    } else {
+      /* en la practica, el DNI que registro antes de abrir el sobre (api/registro.js) */
+      var reg = await P.leerJson('premios-practica/' + req.body.sesion + '-registro.json');
+      if (!reg) {
+        await P.guardarJson(ruta, { estado: 'sin-registro', fecha: '2000-01-01T00:00:00Z' }, { allowOverwrite: true });
+        return responder(res, 403, { ok: false, mensaje: 'Primero registra tu DNI.' });
+      }
+      cliente = reg.datos;
     }
 
     var s = await sortearYDescontar(boleta, cliente, practica);

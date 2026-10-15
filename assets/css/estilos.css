@@ -684,6 +684,52 @@ button{ font:inherit; color:inherit; touch-action:manipulation; }
 }
 .premio-nota{ font-size:.9em; color:var(--tinta-2); text-align:center; }
 
+/* --- abierto el sobre: una sola vista, quieta, solo con el premio --- */
+.modal.revelado .modal-datos,
+.modal.revelado #modal-mensaje,
+.modal.revelado .modal-botones{ display:none; }
+.modal.revelado .modal-logo{ height:min(4.5em, 8vh); margin-bottom:.2em; }
+.modal.revelado .modal-caja{ overflow:hidden; padding-top:1.1em; padding-bottom:1.1em; }
+.modal.revelado #modal-titulo{ margin-bottom:.1em; }
+.modal.revelado .premio{ margin-top:.4em; }
+.modal.revelado .premio-foto{ width:min(100%, 9.5em, 24vh); }
+.modal.revelado .premio-tarjeta{ margin-top:.35em; padding:.8em 1em .85em; }
+
+/* --- practica: registrar el DNI antes de abrir el sobre --- */
+.registro-campo{
+  width:100%;
+  margin:.35em 0 .1em;
+  padding:.45em .9em;
+  font-family:var(--serif);
+  font-size:1.35em; font-weight:600;
+  letter-spacing:.06em;
+  text-align:center;
+  color:var(--tinta);
+  background:#FDFAF3;
+  border:1px solid rgba(190,155,92,.55);
+  border-radius:999px;
+  min-height:1.9em;
+  word-break:break-word;
+}
+.registro-campo.vacio{ color:rgba(123,110,96,.4); font-weight:500; }
+.registro-aviso{ margin:.1em 0 .3em; min-height:1.3em; font-size:.82em; color:var(--tinta-2); text-align:center; }
+.registro-aviso.mal{ color:var(--rojo); font-weight:600; }
+.registro-teclado{ display:grid; gap:.35em; width:100%; }
+.registro-tecla{
+  padding:.45em 0;
+  font-family:var(--serif); font-size:1.1em; font-weight:600;
+  color:var(--tinta);
+  background:linear-gradient(180deg, #FFFEFA 0%, #FAF3E6 58%, #F1E4CC 100%);
+  border:1px solid rgba(190,158,98,.42);
+  border-radius:.45em;
+  box-shadow:0 .12em 0 #D3BA92;
+  cursor:pointer;
+}
+.registro-tecla:active{ transform:translateY(.1em); box-shadow:none; }
+.registro-tecla.borrar{ color:var(--oro-osc); }
+.registro-tecla.ancha{ grid-column:span 4; font-family:var(--sans); font-size:.8em; letter-spacing:.12em; }
+.registro-enviar{ width:100%; margin-top:.6em; }
+
 /* --- la tarjeta que sale del sobre (premio del inventario real) --- */
 .premio-tarjeta{
   position:relative;
