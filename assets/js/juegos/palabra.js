@@ -94,7 +94,7 @@
 
   App.registrar({
     id: 'palabra',
-    nombre: 'Adivina la Palabra',
+    nombre: 'Palabra Secreta',
     emoji: '🔤',
     desc: 'Cuatro pistas, una sola palabra',
     sub: 'Vocabulario',

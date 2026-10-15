@@ -15,17 +15,18 @@ HTML, CSS y JavaScript puros: la entrada con DNI necesita internet (consulta Odo
 
 Al primer toque la página pide pantalla completa automáticamente.
 
-## Los siete juegos
+## Los ocho juegos
 
 | Juego | Qué ejercita | Acceso directo |
 |---|---|---|
-| Memoria | Atención y memoria visual (12 parejas) | `index.html#memoria` |
-| Trivia | Preguntas de salud y belleza, con explicación | `index.html#trivia` |
-| Mitos y Verdades | Desmontar creencias comunes | `index.html#mitos` |
-| Adivina la Palabra | Cuatro pistas y una palabra de estética | `index.html#palabra` |
-| Rompe Ladrillos | Reflejos y coordinación (arcade clásico) | `index.html#ladrillos` |
-| Patos al Vuelo | Puntería y atención (arcade clásico, en la playa) | `index.html#patos` |
-| Salto Infinito | Coordinación: sube saltando entre bloques (hay bloques fantasma) | `index.html#saltos` |
+| Parejas de Belleza | Atención y memoria visual (12 parejas) | `index.html#memoria` |
+| ¿Cuánto sabes de tu piel? | Preguntas de salud y belleza, con explicación | `index.html#trivia` |
+| ¿Mito o Verdad? | Desmontar creencias comunes | `index.html#mitos` |
+| Palabra Secreta | Cuatro pistas y una palabra de estética | `index.html#palabra` |
+| Rompe Arrugas | Reflejos y coordinación (arcade clásico) | `index.html#ladrillos` |
+| Atrapa a la Doctora | Puntería y atención (arcade clásico, en la playa) | `index.html#patos` |
+| Salto al Glow | Coordinación: sube saltando entre bloques (hay bloques fantasma) | `index.html#saltos` |
+| Vuelo Glow | Reflejos: toca para que el avión no se caiga entre los tubos | `index.html#flappy` |
 
 ## Entrada con DNI (validado en Odoo)
 
@@ -55,7 +56,7 @@ nunca hay premio.
 Cuando salta el protector de pantalla (un minuto sin tocar), se vuelve a pedir el
 DNI: quien llega después es otra persona.
 
-## Pantallas táctiles lentas (Patos al Vuelo)
+## Pantallas táctiles lentas (Atrapa a la Doctora)
 
 Entre que el dedo toca el cristal y que el juego se entera pasa un rato, y en ese
 rato el pato ya se ha movido. La tentación es bajar la velocidad, pero eso vuelve
@@ -177,13 +178,13 @@ Los objetivos, uno por juego:
 
 | Juego | Objetivo para ganar premio |
 |---|---|
-| Memoria | completar las 12 parejas |
-| Trivia | 6 aciertos de 8 (`OBJETIVO`) |
-| Mitos y Verdades | 7 aciertos de 10 (`OBJETIVO`) |
-| Adivina la Palabra | 5 palabras de 7 (`OBJETIVO`) |
-| Rompe Ladrillos | 900 puntos o pasar de nivel (`OBJETIVO`) |
-| Patos al Vuelo | llegar a la ronda 3 (`OBJETIVO`) |
-| Salto Infinito | 120 metros (`OBJETIVO`) |
+| Parejas de Belleza | completar las 12 parejas |
+| ¿Cuánto sabes de tu piel? | 6 aciertos de 8 (`OBJETIVO`) |
+| ¿Mito o Verdad? | 7 aciertos de 10 (`OBJETIVO`) |
+| Palabra Secreta | 5 palabras de 7 (`OBJETIVO`) |
+| Rompe Arrugas | 900 puntos o pasar de nivel (`OBJETIVO`) |
+| Atrapa a la Doctora | llegar a la ronda 3 (`OBJETIVO`) |
+| Salto al Glow | 120 metros (`OBJETIVO`) |
 
 ## Duración y dificultad
 
@@ -197,13 +198,13 @@ subirla o bajarla, cada juego tiene sus números arriba del archivo:
 
 | Juego | Qué tocar |
 |---|---|
-| Memoria | `PAREJAS` (12), `TOTAL_NUMEROS` (20, la baraja de la que se sacan) y `VISTAZO` (620 ms) |
-| Trivia | `TOTAL` (8 preguntas) |
-| Mitos y Verdades | `TOTAL` (10 frases) |
-| Adivina la Palabra | `RONDA` (7 palabras), `FICHAS` (14 letras) y `PISTAS_MAX` (2) |
-| Rompe Ladrillos | `VEL_BASE` (68), `PALA_W` (15) y `dobles` en `armar()` |
-| Patos al Vuelo | la velocidad y la `vida` en `nuevoPato()`, el `giro` del quiebro en `moverPato()` y `RADIO_TIRO` (7) |
-| Salto Infinito | `BLOQUE_AN` (17), las probabilidades de `movil`/`fragil`/`fantasma` en `nuevoBloque()` y `separacion()` — ojo: el hueco nunca puede pasar de 20, que es lo que alcanza un salto |
+| Parejas de Belleza | `PAREJAS` (12), `TOTAL_NUMEROS` (20, la baraja de la que se sacan) y `VISTAZO` (620 ms) |
+| ¿Cuánto sabes de tu piel? | `TOTAL` (8 preguntas) |
+| ¿Mito o Verdad? | `TOTAL` (10 frases) |
+| Palabra Secreta | `RONDA` (7 palabras), `FICHAS` (14 letras) y `PISTAS_MAX` (2) |
+| Rompe Arrugas | `VEL_BASE` (68), `PALA_W` (15) y `dobles` en `armar()` |
+| Atrapa a la Doctora | la velocidad y la `vida` en `nuevoPato()`, el `giro` del quiebro en `moverPato()` y `RADIO_TIRO` (7) |
+| Salto al Glow | `BLOQUE_AN` (17), las probabilidades de `movil`/`fragil`/`fantasma` en `nuevoBloque()` y `separacion()` — ojo: el hueco nunca puede pasar de 20, que es lo que alcanza un salto |
 
 ## Se adapta a la pantalla
 
@@ -213,7 +214,7 @@ lo único que cambia entre ellas es el tamaño, no la forma. La página se adapt
 - **En vertical** (tótem girado) el menú va a dos columnas y los juegos se apilan.
 - **En apaisado** la letra se calcula sobre el alto de la pantalla, para que se lea
   desde lejos en una tele grande; el menú pasa a cuatro columnas, las tarjetas de
-  pregunta se centran con un ancho máximo y "Adivina la Palabra" reparte las pistas
+  pregunta se centran con un ancho máximo y "Palabra Secreta" reparte las pistas
   a un lado y las letras al otro.
 - Los juegos de lienzo (ladrillos, patos, salto) **miden el hueco libre** y se
   redibujan solos: si giras la pantalla o cambias de tele, se recolocan sin tocar nada.
@@ -243,7 +244,7 @@ Todo el texto está en archivos separados, en español y fácil de editar:
   (números grandes de colores) o `'productos'` (los dibujos de sérum, crema,
   labial...). Los dibujos están en la lista `PRODUCTOS` y se pueden añadir más
   copiando la estructura `{ id, nombre, d: ficha(...) }`.
-- **Dificultad del rompe ladrillos** → `assets/js/juegos/ladrillos.js`, arriba del todo:
+- **Dificultad del Rompe Arrugas** → `assets/js/juegos/ladrillos.js`, arriba del todo:
   `VEL_BASE` (velocidad de salida de la bola), `VIDAS_INICIO`, `PALA_W` (ancho de
   la paleta) y `SUERTE` (cada cuánto cae una cápsula de premio).
 - **Dificultad de los patos** → `assets/js/juegos/patos.js`, arriba del todo:
@@ -251,7 +252,7 @@ Todo el texto está en archivos separados, en español y fácil de editar:
   (cuánta puntería hace falta: súbelo y se acierta más fácil). La escena de playa
   (cielo, sol, mar, arena y palmeras) se pinta sola en `pintarFondo()`; los
   colores de cada especie de pato están en la lista `TIPOS`.
-- **Dificultad del salto infinito** → `assets/js/juegos/saltos.js`, arriba del todo:
+- **Dificultad del Salto al Glow** → `assets/js/juegos/saltos.js`, arriba del todo:
   `SALTO` (fuerza del salto), `GRAVEDAD`, `BLOQUE_AN` (ancho de los bloques) y
   `CIELOS` (los colores del cielo según la altura).
 
@@ -259,7 +260,7 @@ Todo el texto está en archivos separados, en español y fácil de editar:
 
 - El logo es `assets/img/logo.png`. Sustitúyelo por otro archivo con el mismo
   nombre y aparecerá en el menú y en el protector de pantalla.
-  La bola del rompe ladrillos y el saltador del salto infinito recortan solos
+  La bola del Rompe Arrugas y el saltador del Salto al Glow recortan solos
   el emblema redondo de ese archivo; si el logo nuevo ya es cuadrado, lo usan entero.
 - Los colores están al principio de `assets/css/estilos.css`, en `:root`
   (`--oro`, `--crema`, `--tinta`...). Cambiando esas líneas cambia toda la app.

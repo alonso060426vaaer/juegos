@@ -228,7 +228,7 @@
 
   App.registrar({
     id: 'memoria',
-    nombre: 'Memoria',
+    nombre: 'Parejas de Belleza',
     emoji: '🧴',
     desc: 'Encuentra las 8 parejas',
     sub: 'Parejas',

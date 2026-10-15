@@ -142,7 +142,7 @@
 
   App.registrar({
     id: 'saltos',
-    nombre: 'Salto Infinito',
+    nombre: 'Salto al Glow',
     emoji: '🚀',
     desc: 'Salta de bloque en bloque sin caerte',
     sub: 'Equilibrio',

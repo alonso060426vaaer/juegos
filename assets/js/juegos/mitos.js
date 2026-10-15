@@ -146,7 +146,7 @@
 
   App.registrar({
     id: 'mitos',
-    nombre: 'Mitos y Verdades',
+    nombre: '¿Mito o Verdad?',
     emoji: '⚖️',
     desc: '¿Cierto o puro cuento?',
     sub: 'Verdad o mito',

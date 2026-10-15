@@ -134,7 +134,7 @@
 
   App.registrar({
     id: 'patos',
-    nombre: 'Patos al Vuelo',
+    nombre: 'Atrapa a la Doctora',
     emoji: '🦆',
     desc: 'Atrapa a la doctora antes de que escape',
     sub: 'Puntería',

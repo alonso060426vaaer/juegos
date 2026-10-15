@@ -198,7 +198,7 @@
 
   App.registrar({
     id: 'trivia',
-    nombre: 'Trivia',
+    nombre: '¿Cuánto sabes de tu piel?',
     emoji: '❓',
     desc: '¿Cuánto sabes de nuestros tratamientos?',
     sub: 'Bienestar',

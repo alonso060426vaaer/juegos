@@ -95,7 +95,7 @@
 
   App.registrar({
     id: 'flappy',
-    nombre: 'Flappy Bird',
+    nombre: 'Vuelo Glow',
     emoji: '✈️',
     desc: 'Toca para que el avión no se caiga',
     sub: 'Reflejos',

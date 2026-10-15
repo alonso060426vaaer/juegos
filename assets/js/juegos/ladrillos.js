@@ -129,7 +129,7 @@
 
   App.registrar({
     id: 'ladrillos',
-    nombre: 'Rompe Ladrillos',
+    nombre: 'Rompe Arrugas',
     emoji: '🕹️',
     desc: 'El arcade de siempre: no dejes caer la bola',
     sub: 'Reflejos',
