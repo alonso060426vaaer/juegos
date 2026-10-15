@@ -791,7 +791,7 @@
     caja.classList.remove('eligiendo');
     caja.appendChild(h('p', { class: 'sobres-pista' }, 'Preparando tus sobres…'));
 
-    global.Acceso.pedirPremio().then(function (d) {
+    global.Acceso.pedirPremio(juegoActual && juegoActual.nombre).then(function (d) {
       if (dom.modal.hidden) return;           // ya se fue de esta pantalla
       caja.innerHTML = '';
       if (!d.ok) {

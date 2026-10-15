@@ -159,7 +159,7 @@
 
     var g = $('tabla-regalos'); g.innerHTML = '';
     var cab3 = document.createElement('tr');
-    ['Fecha', 'Paciente', 'DNI', 'Sesión de regalo', 'Boleta'].forEach(function (x) { cab3.appendChild(celda(false, x)); });
+    ['Fecha', 'Paciente', 'DNI', 'Sesión de regalo', 'Boleta', 'En su hoja'].forEach(function (x) { cab3.appendChild(celda(false, x)); });
     g.appendChild(cab3);
     var regalos = regalosDe(entregas);
     if (!regalos.length) {
@@ -170,13 +170,14 @@
       var tr = document.createElement('tr');
       [fechaLima(x.fecha), x.nombre || '(sin nombre en Odoo)', x.dni || '', x.producto, x.boleta]
         .forEach(function (v) { tr.appendChild(celda(true, v)); });
+      tr.appendChild(celda(true, estadoHoja(x)));
       g.appendChild(tr);
     });
     $('imprimir').disabled = !regalos.length;
 
     var e = $('tabla-entregas'); e.innerHTML = '';
     var cab2 = document.createElement('tr');
-    ['Fecha', 'Boleta', 'Premio'].forEach(function (x) { cab2.appendChild(celda(false, x)); });
+    ['Fecha', 'Boleta', 'Paciente', 'Premio', 'En su hoja'].forEach(function (x) { cab2.appendChild(celda(false, x)); });
     e.appendChild(cab2);
     if (!entregas.length) {
       var vacio = document.createElement('tr'); vacio.appendChild(celda(true, 'Todavía no se ha entregado ningún premio.'));
@@ -186,9 +187,17 @@
       var tr = document.createElement('tr');
       tr.appendChild(celda(true, fechaLima(x.fecha)));
       tr.appendChild(celda(true, x.boleta));
+      tr.appendChild(celda(true, x.nombre ? x.nombre + (x.dni ? ' · ' + x.dni : '') : ''));
       tr.appendChild(celda(true, x.producto));
+      tr.appendChild(celda(true, estadoHoja(x)));
       e.appendChild(tr);
     });
+  }
+
+  /* Si el premio llego a la hoja del aniversario (Members Club) o por que no. */
+  function estadoHoja(x) {
+    if (!x.hoja) return '—';
+    return x.hoja === 'ok' ? tag('✓ En su hoja', 'esp') : tag(x.hoja, 'fin');
   }
 
   /* Las sesiones de regalo: entregas de tratamientos (las de antes de

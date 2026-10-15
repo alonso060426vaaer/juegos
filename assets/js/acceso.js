@@ -257,11 +257,12 @@
      * {ok, premio, otros, sobres}. Si se pregunta dos veces devuelve el
      * mismo premio: el sorteo y el descuento se hacen una sola vez.
      */
-    pedirPremio: function () {
+    pedirPremio: function (juego) {
       return fetch(BASE_API + 'premio', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ turno: turno })
+        /* el juego va a su hoja del aniversario junto al premio */
+        body: JSON.stringify({ turno: turno, juego: juego || '' })
       })
         .then(function (resp) { return resp.json(); })
         .catch(function () { return { ok: false, mensaje: 'Sin conexión.' }; });
