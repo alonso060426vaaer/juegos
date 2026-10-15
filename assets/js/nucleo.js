@@ -832,7 +832,7 @@
       var detalle = [p.marca, p.servicio && p.servicio !== p.producto ? bonito(p.producto) : p.presentacion]
         .filter(Boolean).join(' · ');
       return h('div', { class: 'premio-tarjeta especial' },
-        h('span', { class: 'premio-tarjeta-sello' }, '✦ Premio especial ✦'),
+        h('span', { class: 'premio-tarjeta-sello' }, '✦ Sesión de regalo ✦'),
         h('strong', { class: 'premio-tarjeta-nombre' }, nombrePremio(p)),
         detalle ? h('span', { class: 'premio-tarjeta-detalle' }, detalle) : null);
     }

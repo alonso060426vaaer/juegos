@@ -41,6 +41,26 @@
   .tag.esp{ color:#fff; background:linear-gradient(135deg, var(--oro-claro), var(--oro)); }
   .tag.fin{ color:var(--rojo); background:rgba(192,97,79,.1); }
   [hidden]{ display:none !important; }
+
+  /* hojas de regalo: solo existen al imprimir, una por paciente */
+  .hojas{ display:none; }
+  @media print{
+    @page{ size:A5 portrait; margin:12mm; }
+    body{ background:#fff; }
+    main{ display:none; }
+    .hojas{ display:block; }
+    .hoja{ page-break-after:always; break-after:page; font-family:var(--sans); color:var(--tinta); text-align:center; padding-top:4mm; }
+    .hoja:last-child{ page-break-after:auto; break-after:auto; }
+    .hoja img{ width:34mm; }
+    .hoja .sello{ margin:5mm 0 2mm; font-size:9pt; letter-spacing:.3em; text-transform:uppercase; color:var(--oro-osc); }
+    .hoja h2{ font-family:var(--serif); font-size:24pt; margin:0 0 6mm; }
+    .hoja dl{ text-align:left; margin:0 auto; width:85%; font-size:11pt; }
+    .hoja dt{ font-size:8pt; letter-spacing:.12em; text-transform:uppercase; color:var(--tinta-2); margin-top:3mm; }
+    .hoja dd{ margin:0; padding-bottom:1.5mm; border-bottom:1px solid #E7D9C3; font-weight:600; }
+    .hoja .casillas{ display:flex; justify-content:space-between; gap:4mm; width:85%; margin:8mm auto 0; font-size:9pt; }
+    .hoja .casillas span{ flex:1; border-top:1px solid #8B6A38; padding-top:1.5mm; }
+    .hoja .pie{ margin-top:7mm; font-size:8pt; color:var(--tinta-2); }
+  }
 </style>
 </head>
 <body>
@@ -59,6 +79,11 @@
   <section id="panel" hidden>
     <div class="cifras" id="cifras"></div>
     <div class="barra">
+      <h2>Sesiones de regalo</h2>
+      <button class="suave" id="imprimir">Imprimir hojas de regalo</button>
+    </div>
+    <div class="tabla"><table id="tabla-regalos"></table></div>
+    <div class="barra">
       <h2>Premios</h2>
       <button class="suave" id="refrescar">Actualizar</button>
       <button id="excel">Descargar Excel</button>
@@ -68,6 +93,7 @@
     <div class="tabla"><table id="tabla-entregas"></table></div>
   </section>
 </main>
+<div class="hojas" id="hojas"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
@@ -131,6 +157,23 @@
       t.appendChild(tr);
     });
 
+    var g = $('tabla-regalos'); g.innerHTML = '';
+    var cab3 = document.createElement('tr');
+    ['Fecha', 'Paciente', 'DNI', 'Sesión de regalo', 'Boleta'].forEach(function (x) { cab3.appendChild(celda(false, x)); });
+    g.appendChild(cab3);
+    var regalos = regalosDe(entregas);
+    if (!regalos.length) {
+      var nada = document.createElement('tr'); nada.appendChild(celda(true, 'Todavía nadie ha ganado una sesión de regalo.'));
+      g.appendChild(nada);
+    }
+    regalos.slice().reverse().forEach(function (x) {
+      var tr = document.createElement('tr');
+      [fechaLima(x.fecha), x.nombre || '(sin nombre en Odoo)', x.dni || '', x.producto, x.boleta]
+        .forEach(function (v) { tr.appendChild(celda(true, v)); });
+      g.appendChild(tr);
+    });
+    $('imprimir').disabled = !regalos.length;
+
     var e = $('tabla-entregas'); e.innerHTML = '';
     var cab2 = document.createElement('tr');
     ['Fecha', 'Boleta', 'Premio'].forEach(function (x) { cab2.appendChild(celda(false, x)); });
@@ -146,6 +189,38 @@
       tr.appendChild(celda(true, x.producto));
       e.appendChild(tr);
     });
+  }
+
+  /* Las sesiones de regalo: entregas de tratamientos (las de antes de
+     guardarse el tipo se reconocen por ser de un premio especial). */
+  function regalosDe(entregas) {
+    var especiales = {};
+    (datos.items || []).forEach(function (i) { if (i.especial) especiales[i.id] = true; });
+    return entregas.filter(function (x) { return x.tipo === 'tratamiento' || (!x.tipo && especiales[x.id]); });
+  }
+
+  /** Una hoja A5 por paciente, para entregarle o grapar a su hoja del aniversario. */
+  function imprimir() {
+    var cont = $('hojas'); cont.innerHTML = '';
+    regalosDe(datos.entregas || []).forEach(function (x) {
+      var hoja = document.createElement('section'); hoja.className = 'hoja';
+      hoja.innerHTML =
+        '<img src="assets/img/logo.png" alt="">' +
+        '<p class="sello">✦ Sesión de regalo ✦</p><h2></h2>' +
+        '<dl><dt>Paciente</dt><dd class="n"></dd><dt>DNI</dt><dd class="d"></dd>' +
+        '<dt>Boleta de su compra</dt><dd class="b"></dd><dt>Ganada el</dt><dd class="f"></dd></dl>' +
+        '<div class="casillas"><span>Sesión aplicada (fecha)</span><span>Firma de la paciente</span></div>' +
+        '<p class="pie">Zona de Juegos · Aniversario Joana Bernedo Body Aesthetics</p>';
+      hoja.querySelector('h2').textContent = x.producto;
+      hoja.querySelector('.n').textContent = x.nombre || '';
+      hoja.querySelector('.d').textContent = x.dni || '';
+      hoja.querySelector('.b').textContent = x.boleta;
+      hoja.querySelector('.f').textContent = fechaLima(x.fecha);
+      cont.appendChild(hoja);
+    });
+    var img = cont.querySelector('img');
+    /* se espera al logo para que no salga la hoja sin el */
+    if (img && !img.complete) img.onload = function () { window.print(); }; else window.print();
   }
 
   function cargar(clave) {
@@ -174,7 +249,14 @@
     h1['!cols'] = [{ wch: 5 }, { wch: 48 }, { wch: 16 }, { wch: 30 }, { wch: 17 }, { wch: 22 }, { wch: 17 }];
     var h2 = XLSX.utils.aoa_to_sheet(hoja2);
     h2['!cols'] = [{ wch: 18 }, { wch: 16 }, { wch: 48 }];
+    var hoja3 = [['FECHA', 'PACIENTE', 'DNI', 'SESIÓN DE REGALO', 'BOLETA']];
+    regalosDe(datos.entregas || []).forEach(function (x) {
+      hoja3.push([fechaLima(x.fecha), x.nombre || '', x.dni || '', x.producto, x.boleta]);
+    });
+    var h3 = XLSX.utils.aoa_to_sheet(hoja3);
+    h3['!cols'] = [{ wch: 18 }, { wch: 36 }, { wch: 12 }, { wch: 32 }, { wch: 16 }];
     XLSX.utils.book_append_sheet(libro, h1, 'INVENTARIO_MUESTRAS');
+    XLSX.utils.book_append_sheet(libro, h3, 'SESIONES_REGALO');
     XLSX.utils.book_append_sheet(libro, h2, 'ENTREGAS_JUEGO');
     var hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
     XLSX.writeFile(libro, 'Inventario-premios-' + hoy + '.xlsx');
@@ -183,6 +265,7 @@
   $('form').addEventListener('submit', function (ev) { ev.preventDefault(); cargar($('clave').value.trim()); });
   $('refrescar').addEventListener('click', function () { cargar(guardada()); });
   $('excel').addEventListener('click', excel);
+  $('imprimir').addEventListener('click', imprimir);
   if (guardada()) cargar(guardada());
 })();
 </script>

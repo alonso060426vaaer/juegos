@@ -3,22 +3,20 @@
 
    Corre en Vercel (carpeta api/), nunca en el navegador: aqui viven la
    clave de Odoo y la de la base de datos, y este repositorio es publico.
-   Todo se configura en Vercel -> Settings -> Environment Variables:
+   La conexion y las fechas estan en _odoo.js; las variables, en Vercel ->
+   Settings -> Environment Variables (ODOO_*, DIAS_BOLETA, PRUEBAS_HASTA,
+   FECHA_EVENTO y BLOB_READ_WRITE_TOKEN, que la pone Vercel solo).
 
-     ODOO_URL        https://test-oftalmolaser.meditech.team
-     ODOO_DB         test-oftalmolaser
-     ODOO_USER       usuario de Odoo (basta con que pueda LEER facturas)
-     ODOO_PASSWORD   su contrasena
-     DIAS_BOLETA     0 = solo compras de hoy; 7 = de los ultimos 7 dias
-     BLOB_READ_WRITE_TOKEN
-                     lo pone Vercel solo al conectar el almacen Blob
+   Que compras valen:
+     - en dias de prueba (hasta PRUEBAS_HASTA): las de los ultimos
+       DIAS_BOLETA dias (0 = solo de hoy);
+     - despues: SOLO las del dia del evento, FECHA_EVENTO.
 
    Se buscan las boletas y facturas emitidas a ese DNI (el documento del
-   cliente en Odoo), en cualquiera de las tres empresas. CADA COMPRA ES UNA
-   OPORTUNIDAD: al entrar se gasta la compra mas antigua que quede libre.
-   Las gastadas se anotan como un archivito en Vercel Blob
-   (boletas-usadas/B001-...), y Blob se niega a crear uno que ya existe:
-   eso impide entrar dos veces con la misma compra. El DNI no se guarda.
+   cliente en Odoo). CADA COMPRA ES UNA OPORTUNIDAD: al entrar se gasta la
+   compra mas antigua que quede libre. Las gastadas se anotan como un
+   archivito en Vercel Blob (boletas-usadas/BE01-...), y Blob se niega a
+   crear uno que ya existe: eso impide entrar dos veces con la misma compra.
    A Odoo solo se le pregunta; no se escribe nada en el.
    ========================================================================== */
 
@@ -26,16 +24,11 @@
 
 var blob = require('@vercel/blob');
 var firmar = require('./_premios').firmar;
+var Odoo = require('./_odoo');
 
 function responder(res, codigo, cuerpo) {
   res.setHeader('Cache-Control', 'no-store');
   res.status(codigo).json(cuerpo);
-}
-
-/** Fecha de hoy en Peru (Vercel trabaja en UTC), menos `dias`, como AAAA-MM-DD. */
-function fechaLima(dias) {
-  var ahora = new Date(Date.now() - 5 * 3600 * 1000 - dias * 86400 * 1000);
-  return ahora.toISOString().slice(0, 10);
 }
 
 /* Como puede estar guardado en Odoo: tal cual, sin los ceros de delante
@@ -47,38 +40,19 @@ function variantes(dni) {
   return lista.filter(function (v, i) { return v && lista.indexOf(v) === i; });
 }
 
-async function odoo(service, method, args) {
-  var r = await fetch(process.env.ODOO_URL.replace(/\/+$/, '') + '/jsonrpc', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ jsonrpc: '2.0', method: 'call',
-                           params: { service: service, method: method, args: args } })
-  });
-  var datos = await r.json();
-  if (datos.error) throw new Error('Odoo: ' + (datos.error.data && datos.error.data.message || datos.error.message));
-  return datos.result;
-}
-
-var uid = null;   // se guarda mientras Vercel mantenga viva la funcion
-
-/** Compras vigentes de ese DNI desde `desde` (o de cualquier fecha si es null). */
-async function comprasDe(dni, desde) {
-  var db = process.env.ODOO_DB, pwd = process.env.ODOO_PASSWORD;
-  if (!uid) {
-    uid = await odoo('common', 'login', [db, process.env.ODOO_USER, pwd]);
-    if (!uid) throw new Error('Odoo rechazo el usuario o la contrasena');
-  }
-  /* 'reversed' = anulada con nota de credito: sigue emitida pero no vale.
-     Sin filtrar por empresa: valen las tres (ADVANCED, ADVANCED BODY y RVM). */
+/** Compras vigentes de ese DNI. `fechas`: {desde} o {dia}; null = cualquier fecha. */
+function comprasDe(dni, fechas) {
+  /* 'reversed' = anulada con nota de credito: sigue emitida pero no vale. */
   var dominio = [
     ['move_type', '=', 'out_invoice'],
     ['state', '=', 'posted'],
     ['payment_state', '!=', 'reversed'],
     ['commercial_partner_id.vat', 'in', variantes(dni)]
   ];
-  if (desde) dominio.push(['invoice_date', '>=', desde]);
-  return odoo('object', 'execute_kw', [db, uid, pwd, 'account.move', 'search_read',
-    [dominio], { fields: ['name'], order: 'invoice_date asc, id asc', limit: 30 }]);
+  if (fechas && fechas.dia) dominio.push(['invoice_date', '=', fechas.dia]);
+  if (fechas && fechas.desde) dominio.push(['invoice_date', '>=', fechas.desde]);
+  return Odoo.leer('account.move', 'search_read', [dominio],
+    { fields: ['name'], order: 'invoice_date asc, id asc', limit: 30 });
 }
 
 /** Anota la compra como gastada. Devuelve false si ya lo estaba. */
@@ -92,6 +66,14 @@ async function marcarUsada(numero) {
     if (/already exists/i.test(e.message)) return false;
     throw e;
   }
+}
+
+/* 2026-10-16 -> "16 de octubre" */
+function fechaBonita(iso) {
+  var MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio',
+               'agosto', 'setiembre', 'octubre', 'noviembre', 'diciembre'];
+  var p = iso.split('-');
+  return parseInt(p[2], 10) + ' de ' + MESES[parseInt(p[1], 10) - 1];
 }
 
 module.exports = async function (req, res) {
@@ -116,15 +98,18 @@ module.exports = async function (req, res) {
   }
 
   try {
+    var pruebas = Odoo.enPruebas();
     var dias = parseInt(process.env.DIAS_BOLETA || '0', 10) || 0;
-    var compras = await comprasDe(dni, fechaLima(dias));
+    var fechas = pruebas ? { desde: Odoo.fechaLima(dias) } : { dia: process.env.FECHA_EVENTO };
+    var compras = await comprasDe(dni, fechas);
 
     if (!compras.length) {
       var antes = await comprasDe(dni, null);
+      var cuando = !pruebas ? 'del ' + fechaBonita(process.env.FECHA_EVENTO)
+                 : dias ? 'de los últimos ' + dias + ' días' : 'de hoy';
       return responder(res, 200, { ok: false, motivo: antes.length ? 'antigua' : 'sin-compra',
         mensaje: antes.length
-          ? (dias ? 'No encontramos compras de los últimos ' + dias + ' días con ese DNI.'
-                  : 'No encontramos compras de hoy con ese DNI.')
+          ? 'No encontramos compras ' + cuando + ' con ese DNI.'
           : 'No encontramos compras con ese DNI. Consulta en recepción.' });
     }
 
@@ -141,7 +126,6 @@ module.exports = async function (req, res) {
         ? 'Ya usaste las ' + compras.length + ' oportunidades de tus compras.'
         : 'Este DNI ya usó su oportunidad de jugar.' });
   } catch (e) {
-    uid = null;
     console.error(e);
     return responder(res, 503, { ok: false, motivo: 'servidor',
       mensaje: 'No pudimos comprobar tu compra. Inténtalo otra vez o avisa en recepción.' });

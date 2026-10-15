@@ -10,7 +10,8 @@
    Variables en Vercel:
      TURNO_SECRETO   firma el turno que da api/dni.js (sin el, no hay premio)
      ADMIN_CLAVE     para ver el inventario en inventario.html
-     PROB_ESPECIAL   probabilidad de CADA premio especial (por defecto 0.0015)
+     PROB_ESPECIAL   probabilidad de CADA sesion de regalo el dia del evento
+     PROB_PRUEBAS    la misma, en los dias de prueba (hasta PRUEBAS_HASTA)
    ========================================================================== */
 
 'use strict';
@@ -80,7 +81,10 @@ function azar() { return crypto.randomInt(0, 1e9) / 1e9; }
  */
 function sortear(items) {
   var quedan = items.filter(function (i) { return i.cantidad > 0; });
-  var prob = parseFloat(process.env.PROB_ESPECIAL || '0.0015');
+  /* en los dias de prueba salen mas, para poder verlos; el dia del evento, casi nunca */
+  var prob = parseFloat(require('./_odoo').enPruebas()
+    ? (process.env.PROB_PRUEBAS || process.env.PROB_ESPECIAL || '0.01')
+    : (process.env.PROB_ESPECIAL || '0.0005'));
   var especiales = quedan.filter(function (i) { return i.especial; });
   for (var e = 0; e < especiales.length; e++) {
     if (azar() < prob) return especiales[e];

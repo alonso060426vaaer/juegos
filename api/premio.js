@@ -14,6 +14,7 @@
 'use strict';
 
 var P = require('./_premios');
+var Odoo = require('./_odoo');
 
 function responder(res, codigo, cuerpo) {
   res.setHeader('Cache-Control', 'no-store');
@@ -21,6 +22,12 @@ function responder(res, codigo, cuerpo) {
 }
 
 async function sortearYDescontar(boleta) {
+  /* Quien es, por si le toca una sesion de regalo: se apunta con su DNI y
+     su nombre para pasarlo a su hoja. Si Odoo no responde, el premio se
+     entrega igual. */
+  var cliente = null;
+  try { cliente = await Odoo.clienteDeBoleta(boleta); } catch (e) { console.error(e); }
+
   for (var intento = 0; intento < 8; intento++) {
     var inv = await P.leerInventario();
     if (!inv) throw new Error('No hay inventario de premios cargado');
@@ -33,8 +40,11 @@ async function sortearYDescontar(boleta) {
 
     ganado.cantidad -= 1;
     inv.datos.entregas = inv.datos.entregas || [];
-    inv.datos.entregas.push({ fecha: new Date().toISOString(), boleta: boleta,
-                              id: ganado.id, producto: ganado.servicio || ganado.producto });
+    var entrega = { fecha: new Date().toISOString(), boleta: boleta, id: ganado.id,
+                    producto: ganado.servicio || ganado.producto,
+                    tipo: ganado.especial ? 'tratamiento' : 'producto' };
+    if (ganado.especial && cliente) { entrega.dni = cliente.dni; entrega.nombre = cliente.nombre; }
+    inv.datos.entregas.push(entrega);
     inv.datos.actualizado = new Date().toISOString();
 
     if (await P.guardarInventario(inv.datos, inv.etag)) {
