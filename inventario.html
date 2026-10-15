@@ -159,7 +159,7 @@
 
     var g = $('tabla-regalos'); g.innerHTML = '';
     var cab3 = document.createElement('tr');
-    ['Fecha', 'Paciente', 'DNI', 'Sesión de regalo', 'Boleta', 'En su hoja'].forEach(function (x) { cab3.appendChild(celda(false, x)); });
+    ['Fecha', 'Paciente', 'DNI', 'Sesión de regalo', 'Boleta', 'En su hoja', ''].forEach(function (x) { cab3.appendChild(celda(false, x)); });
     g.appendChild(cab3);
     var regalos = regalosDe(entregas);
     if (!regalos.length) {
@@ -171,6 +171,13 @@
       [fechaLima(x.fecha), x.nombre || '(sin nombre en Odoo)', x.dni || '', x.producto, x.boleta]
         .forEach(function (v) { tr.appendChild(celda(true, v)); });
       tr.appendChild(celda(true, estadoHoja(x)));
+      /* si no entro a una hoja del aniversario (no compro alli), se baja aqui con su mismo formato */
+      if (x.hoja !== 'ok' && x.dni && !x.anulada) {
+        var b = document.createElement('button');
+        b.className = 'suave'; b.textContent = 'Descargar hoja';
+        b.addEventListener('click', function () { descargarHoja(x, b); });
+        tr.appendChild(celda(true, b));
+      } else tr.appendChild(celda(true, ''));
       g.appendChild(tr);
     });
     $('imprimir').disabled = !regalos.length;
@@ -197,6 +204,55 @@
       tr.appendChild(celda(true, estadoHoja(x)));
       e.appendChild(tr);
     });
+  }
+
+  /* ---------------------------------------------------------------
+     HOJA DEL ANIVERSARIO PARA QUIEN NO COMPRO ALLI: misma hoja que imprime
+     el sistema de aniversario (se usa su propio js/hojas-pdf.js, cargado
+     de su servidor, para que salga identica), solo con el premio del juego
+     y marcada "juego de prueba" si salio en la practica.
+     --------------------------------------------------------------- */
+  var ANIV = 'https://oftalmolaser.com.pe/aniversario/';
+  var pdfListo = null;
+  function cargarScript(src) {
+    return new Promise(function (ok, mal) {
+      var s = document.createElement('script'); s.src = src; s.onload = ok;
+      s.onerror = function () { mal(new Error('No se pudo cargar ' + src)); };
+      document.head.appendChild(s);
+    });
+  }
+  function cargarPdf() {
+    if (!pdfListo) {
+      pdfListo = cargarScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js')
+        .then(function () { return cargarScript(ANIV + 'js/hojas-pdf.js?juegos=' + Date.now()); })
+        .then(function () { return fetch('assets/img/logo-oftalmolaser.png'); })
+        .then(function (r) { return r.blob(); })
+        .then(function (b) { return new Promise(function (ok) { var f = new FileReader(); f.onload = function () { ok(f.result); }; f.readAsDataURL(b); }); });
+      pdfListo.catch(function () { pdfListo = null; });
+    }
+    return pdfListo;
+  }
+
+  function descargarHoja(x, boton) {
+    var txt = boton.textContent; boton.disabled = true; boton.textContent = 'Preparando…';
+    cargarPdf().then(function (logo) {
+      if (typeof window.FCS_HOJAS_PDF !== 'function') throw new Error('La hoja del aniversario no cargó.');
+      var prueba = !!x.practica;
+      var nombre = x.producto + (prueba ? ' (juego de prueba)' : '');
+      var juego = prueba ? 'de prueba' : (x.juego || '');
+      var cobrado = new Date(Date.parse(x.fecha) - 5 * 3600e3).toISOString().replace('T', ' ').slice(0, 19);
+      var compra = {
+        id: 0, estado: 'cobrada', cobrado: cobrado, creado: cobrado, nivel: 'prueba', base: 0, final: 0,
+        comprobante: prueba ? '' : x.boleta, armo: 'Zona de Juegos',
+        items: [{ id: 0, extra: 'premio', nombre: 'Premio del juego: ' + nombre, nota: 'Sesión de regalo', juego: juego,
+                  cant: 1, precio: 0, regular: 0, unitario: 0, pct: 0, total: 0, ahorro: 0, sesiones: 1, max_desc: 0,
+                  paquete: false, moneda: 'USD', casillas: [[x.producto, 1]] }]
+      };
+      var paciente = { id: 0, nombre: x.nombre || '', dni: x.dni, tarjeta: null, nivel: 'prueba', compras: [compra] };
+      var niveles = [{ id: 'prueba', nombre: prueba ? 'Juego de prueba' : 'Zona de Juegos' }];
+      var doc = window.FCS_HOJAS_PDF([paciente], { anio: cobrado.slice(0, 4), niveles: niveles, logo: logo });
+      doc.save('Hoja ' + (prueba ? 'de prueba ' : '') + (x.nombre || x.dni) + '.pdf');
+    }).catch(function (e) { alert(e.message); }).then(function () { boton.disabled = false; boton.textContent = txt; });
   }
 
   /* Si el premio llego a la hoja del aniversario (Members Club) o por que no. */

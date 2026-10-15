@@ -35,7 +35,7 @@ function responder(res, codigo, cuerpo) {
 /* `practica` (el codigo de la practica, o null): entran los premios
    practica:true (bolsa ecologica y sachets) y las sesiones de regalo, estas
    con la probabilidad propia de la practica (P.probPractica). */
-async function sortearYDescontar(boleta, cliente, practica) {
+async function sortearYDescontar(boleta, cliente, practica, juego) {
   for (var intento = 0; intento < 8; intento++) {
     var inv = await P.leerInventario();
     if (!inv) throw new Error('No hay inventario de premios cargado');
@@ -55,6 +55,7 @@ async function sortearYDescontar(boleta, cliente, practica) {
                     producto: ganado.servicio || ganado.producto,
                     tipo: ganado.especial ? 'tratamiento' : practica ? 'practica' : 'producto' };
     if (practica) { entrega.practica = true; entrega.sesion = practica; }
+    if (juego) entrega.juego = String(juego).slice(0, 60);
     if (cliente) { entrega.dni = cliente.dni; entrega.nombre = cliente.nombre; }
     if (cliente && cliente.codigo) entrega.paciente = cliente.codigo;
     if (cliente && cliente.enOdoo === false) entrega.registrar = true;   // no esta en Odoo: recepcion lo registra
@@ -82,7 +83,7 @@ async function aLaHoja(cliente, ganado, juego, practica) {
   var nombre = (ganado.servicio || ganado.producto) + (!ganado.especial && ganado.presentacion ? ' · ' + ganado.presentacion : '');
   if (practica) {
     nombre = nombre.slice(0, 80 - ' (juego de prueba)'.length) + ' (juego de prueba)';
-    juego = 'de prueba' + (juego ? ': ' + juego : '');
+    juego = 'de prueba';             // corto: en la hoja la linea de detalle no da para mas
   }
   var corte = new AbortController();
   var reloj = setTimeout(function () { corte.abort(); }, 7000);
@@ -161,7 +162,7 @@ module.exports = async function (req, res) {
       try { cliente = await Odoo.clienteDeBoleta(boleta); } catch (e) { console.error(e); }
     }
 
-    var s = await sortearYDescontar(boleta, cliente, practica ? sesion : null);
+    var s = await sortearYDescontar(boleta, cliente, practica ? sesion : null, req.body && req.body.juego);
     await P.guardarJson(ruta, { estado: 'entregado', fecha: new Date().toISOString(), resultado: s.resultado,
                                 id: s.ganado && s.ganado.id, juego: String((req.body && req.body.juego) || '').slice(0, 60) },
                         { allowOverwrite: true });
