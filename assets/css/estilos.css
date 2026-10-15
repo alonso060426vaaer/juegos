@@ -722,7 +722,7 @@ button{ font:inherit; color:inherit; touch-action:manipulation; }
 .registro-campo.vacio{ color:rgba(123,110,96,.4); font-weight:500; }
 .registro-aviso{ margin:.1em 0 .3em; min-height:1.3em; font-size:.82em; color:var(--tinta-2); text-align:center; }
 .registro-aviso.mal{ color:var(--rojo); font-weight:600; }
-.registro-campo, .registro-teclado, .registro-enviar{ align-self:stretch; }
+.registro-campo, .registro-teclado, .registro-enviar, .registro-zona{ align-self:stretch; width:100%; box-sizing:border-box; }
 .registro-teclado{ display:grid; gap:.4em; width:100%; }
 .registro-tecla{
   padding:.5em 0;

@@ -869,7 +869,7 @@
     var campo = h('div', { class: 'registro-campo' }, '');
     var aviso = h('p', { class: 'registro-aviso' }, '');
     var titulo = h('p', { class: 'sobres-pista' }, '');
-    var zona = h('div', {});
+    var zona = h('div', { class: 'registro-zona' });
     var boton = h('button', { class: 'btn btn-final registro-enviar', onclick: function () { enviar(); } }, 'Registrar mi premio');
 
     function pintar() {
