@@ -360,7 +360,7 @@
             : 'Elige un juego y disfruta un momento para ti'),
           global.Acceso
             ? h('span', { class: 'menu-intentos' + (enPractica() ? ' practica' : '') },
-                enPractica() ? 'Modo práctica · sin premio' : global.INTENTOS + ' intentos')
+                enPractica() ? 'Modo práctica' : global.INTENTOS + ' intentos')
             : null),
         enPractica()
           ? h('button', { class: 'menu-boleta', onclick: function () { sonar('toque'); salir(); } },
@@ -688,7 +688,22 @@
        'buena suerte, nos vemos el proximo ano' y vuelve solo al inicio.
        --------------------------------------------------------------- */
     dom.modalPremio.innerHTML = '';
-    if (enPractica()) { finPractica(op); return; }
+    if (enPractica()) {
+      if (!op.premio) { finPractica(op); return; }
+      /* gano en la practica: tambien hay sobres (solo bolsa y sachets, los
+         elige el servidor) y al abrir el suyo vuelve solo al inicio, asi
+         que cada practica da como mucho un premio */
+      clearTimeout(relojSalida);
+      dom.modal.classList.toggle('con-datos', (op.datos || []).length > 0);
+      dom.modalTitulo.textContent = '¡Muy bien, lo lograste!';
+      dom.modalMensaje.textContent = '¡Excelente partida! Elige tu sobre.';
+      dom.modalRepetir.hidden = true;
+      dom.modalPremio.hidden = false;
+      dom.modalSello.textContent = '🎁';
+      prepararSobres(function () { volverSolo(15); });
+      mostrarModal();
+      return;
+    }
 
     if (op.premio) premioGanado = op.premio;
 
@@ -751,9 +766,9 @@
     dom.modal.hidden = false;
   }
 
-  /** Final de una partida de practica: en practica nadie gana. Ni sobres
-      ni premio, ni siquiera se nombran: llegue o no a la meta, solo se le
-      dice que ya sabe jugar. */
+  /** Final de una partida de practica SIN llegar a la meta: ni sobres ni
+      premio, solo se le dice que ya sabe jugar. (Si llega a la meta hay
+      sobres: ver abrirModal.) */
   function finPractica(op) {
     clearTimeout(relojSalida);
     dom.modalPremio.hidden = true;

@@ -16,6 +16,10 @@
    Variables: ANIVERSARIO_URL (su api/index.php) y PREMIOS_A_HOJA
    ("todos" o "tratamientos"). Si el Members Club no responde, el premio
    se entrega igual y queda apuntado el motivo para recepcion.
+
+   PRACTICA: con {practica:true, sesion} (sin DNI) se sortea solo entre
+   los premios practica:true del inventario, uno por sesion, sin Odoo ni
+   hoja. La entrega queda como boleta "PRÁCTICA".
    ========================================================================== */
 
 'use strict';
@@ -28,22 +32,27 @@ function responder(res, codigo, cuerpo) {
   res.status(codigo).json(cuerpo);
 }
 
-async function sortearYDescontar(boleta, cliente) {
+/* `practica`: solo entran los premios marcados practica:true en el
+   inventario (la bolsa ecologica y los sachets) y nunca un tratamiento. */
+async function sortearYDescontar(boleta, cliente, practica) {
   for (var intento = 0; intento < 8; intento++) {
     var inv = await P.leerInventario();
     if (!inv) throw new Error('No hay inventario de premios cargado');
     var items = inv.datos.items;
+    var posibles = practica
+      ? items.filter(function (i) { return i.practica && !i.especial; })
+      : items;
 
-    var quedan = items.filter(function (i) { return i.cantidad > 0; });
+    var quedan = posibles.filter(function (i) { return i.cantidad > 0; });
     var sobres = Math.min(3, quedan.length);
-    var ganado = P.sortear(items);
+    var ganado = P.sortear(posibles);
     if (!ganado) return { resultado: { premio: null, otros: [], sobres: 0 }, ganado: null };
 
     ganado.cantidad -= 1;
     inv.datos.entregas = inv.datos.entregas || [];
     var entrega = { fecha: new Date().toISOString(), boleta: boleta, id: ganado.id,
                     producto: ganado.servicio || ganado.producto,
-                    tipo: ganado.especial ? 'tratamiento' : 'producto' };
+                    tipo: practica ? 'practica' : ganado.especial ? 'tratamiento' : 'producto' };
     if (cliente) { entrega.dni = cliente.dni; entrega.nombre = cliente.nombre; }
     inv.datos.entregas.push(entrega);
     inv.datos.actualizado = new Date().toISOString();
@@ -102,10 +111,21 @@ module.exports = async function (req, res) {
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'POST') return responder(res, 405, { ok: false });
 
-  var boleta = P.verificar(req.body && req.body.turno);
-  if (!boleta) return responder(res, 403, { ok: false, mensaje: 'Turno no válido.' });
-
-  var ruta = 'premios-entregados/' + boleta + '.json';
+  /* PRACTICA (se entra tocando el logo, sin DNI): tambien da premio de
+     verdad, pero solo bolsa ecologica y sachets, y uno por practica: cada
+     practica trae su propio codigo y ese es su candado. */
+  var practica = !!(req.body && req.body.practica);
+  var boleta, ruta;
+  if (practica) {
+    var sesion = String(req.body.sesion || '');
+    if (!/^[a-z0-9]{16,48}$/.test(sesion)) return responder(res, 403, { ok: false, mensaje: 'Práctica no válida.' });
+    boleta = 'PRÁCTICA';
+    ruta = 'premios-practica/' + sesion + '.json';
+  } else {
+    boleta = P.verificar(req.body && req.body.turno);
+    if (!boleta) return responder(res, 403, { ok: false, mensaje: 'Turno no válido.' });
+    ruta = 'premios-entregados/' + boleta + '.json';
+  }
   try {
     /* El candado: solo la primera llamada de este turno pasa de aqui. */
     try {
@@ -125,13 +145,15 @@ module.exports = async function (req, res) {
     /* Quien es: su DNI y su nombre, sacados de Odoo con la boleta. Si Odoo
        no responde, el premio se entrega igual. */
     var cliente = null;
-    try { cliente = await Odoo.clienteDeBoleta(boleta); } catch (e) { console.error(e); }
+    if (!practica) {
+      try { cliente = await Odoo.clienteDeBoleta(boleta); } catch (e) { console.error(e); }
+    }
 
-    var s = await sortearYDescontar(boleta, cliente);
+    var s = await sortearYDescontar(boleta, cliente, practica);
     await P.guardarJson(ruta, { estado: 'entregado', fecha: new Date().toISOString(), resultado: s.resultado },
                         { allowOverwrite: true });
 
-    if (s.ganado) {
+    if (s.ganado && !practica) {
       var hoja = await aLaHoja(cliente, s.ganado, req.body && req.body.juego);
       try { await anotarHoja(boleta, hoja); } catch (e) { console.error(e); }
     }

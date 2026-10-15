@@ -67,6 +67,13 @@
   var practica = false;         // entro a probar, sin DNI y sin premio
   var comprobante = '';
   var turno = '';               // firmado por api/dni: con el se pide el premio
+  var sesionPractica = '';      // codigo de esta practica: un premio por practica
+
+  function codigoAlAzar() {
+    var b = new Uint8Array(12);
+    (global.crypto || global.msCrypto).getRandomValues(b);
+    return Array.prototype.map.call(b, function (x) { return ('0' + x.toString(16)).slice(-2); }).join('');
+  }
 
   /* Direccion del resto de la API (premio), junto a la del DNI. */
   var BASE_API = API.replace(/dni$/, '');
@@ -214,6 +221,7 @@
       if (comprobando) return;
       autorizado = true;
       practica = true;
+      sesionPractica = codigoAlAzar();
       comprobante = '';
       App.pantallaCompleta();
       App.sonar('toque');
@@ -250,7 +258,7 @@
     autorizado: function () { return autorizado; },
     practica: function () { return practica; },
     comprobante: function () { return comprobante; },
-    olvidar: function () { autorizado = false; practica = false; comprobante = ''; turno = ''; },
+    olvidar: function () { autorizado = false; practica = false; comprobante = ''; turno = ''; sesionPractica = ''; },
 
     /**
      * Pide al servidor el premio de este turno (ya ganado). Responde
@@ -262,7 +270,9 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         /* el juego va a su hoja del aniversario junto al premio */
-        body: JSON.stringify({ turno: turno, juego: juego || '' })
+        body: JSON.stringify(practica
+          ? { practica: true, sesion: sesionPractica, juego: juego || '' }
+          : { turno: turno, juego: juego || '' })
       })
         .then(function (resp) { return resp.json(); })
         .catch(function () { return { ok: false, mensaje: 'Sin conexión.' }; });

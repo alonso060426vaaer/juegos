@@ -840,7 +840,7 @@ button{ font:inherit; color:inherit; touch-action:manipulation; }
 .sobre > .sobre-sello{
   inset:auto;
   left:50%; top:58%;
-  width:1.75em; height:1.75em;
+  width:2.35em; height:2.35em;
   transform:translate(-50%,-50%);
   border-radius:50%;
   background:radial-gradient(circle at 35% 30%, #D9B676 0%, #A57D3C 60%, #7E5D2A 100%);
@@ -848,11 +848,12 @@ button{ font:inherit; color:inherit; touch-action:manipulation; }
   z-index:4;
   transition:opacity .2s, transform .3s;
 }
+/* el monograma JB ya preparado en blanco y con el trazo engrosado
+   (img/sello-jb.png): recortado del logo grande se veia borroso en el totem */
 .sobre-sello::after{
-  content:""; position:absolute; inset:10%;
-  background:url("../img/logo.png") 49.66% 19.83% / 195.65% auto no-repeat;
-  filter:brightness(0) invert(1);
-  opacity:.92;
+  content:""; position:absolute; inset:7%;
+  background:url("../img/sello-jb.png") center / contain no-repeat;
+  opacity:.95;
 }
 .sobre.abierto{ animation:none; transform:scale(1.15); z-index:2; }
 .sobre.abierto .sobre-sello{ opacity:0; transform:translate(-50%,-50%) scale(1.5); }
