@@ -79,13 +79,14 @@ function azar() { return crypto.randomInt(0, 1e9) / 1e9; }
  * premio:true) sale con PROB_ESPECIAL; si no toca ninguno, sale uno normal
  * con mas probabilidad cuanto mas stock tenga, para que se gasten parejos.
  */
-function sortear(items) {
+function sortear(items, probForzada) {
   var quedan = items.filter(function (i) { return i.cantidad > 0; });
   /* en los dias de prueba salen mas, para poder verlos; el dia del evento, casi nunca */
-  var prob = parseFloat(require('./_odoo').enPruebas()
+  var prob = probForzada !== undefined ? probForzada : parseFloat(require('./_odoo').enPruebas()
     ? (process.env.PROB_PRUEBAS || process.env.PROB_ESPECIAL || '0.01')
     : (process.env.PROB_ESPECIAL || '0.0005'));
-  var especiales = quedan.filter(function (i) { return i.especial; });
+  /* en orden al azar: con probabilidad alta no saldria siempre el primero */
+  var especiales = mezclar(quedan.filter(function (i) { return i.especial; }));
   for (var e = 0; e < especiales.length; e++) {
     if (azar() < prob) return especiales[e];
   }
@@ -115,7 +116,22 @@ function mezclar(lista) {
   return a;
 }
 
+/**
+ * Probabilidad de cada sesion de regalo EN LA PRACTICA. Hasta
+ * PRACTICA_PRUEBAS_HASTA (fecha y hora de Peru, AAAA-MM-DDTHH:MM) vale
+ * PRACTICA_PROB_PRUEBAS (1 = sale siempre, para probar); despues,
+ * PRACTICA_PROB_ESPECIAL (0.000005 = 0,0005 %).
+ */
+function probPractica() {
+  var ahoraLima = new Date(Date.now() - 5 * 3600 * 1000).toISOString().slice(0, 16);
+  var hasta = process.env.PRACTICA_PRUEBAS_HASTA || '';
+  return parseFloat(hasta && ahoraLima < hasta
+    ? (process.env.PRACTICA_PROB_PRUEBAS || '1')
+    : (process.env.PRACTICA_PROB_ESPECIAL || '0.000005'));
+}
+
 module.exports = {
+  probPractica: probPractica,
   firmar: firmar, verificar: verificar,
   leerJson: leerJson, guardarJson: guardarJson,
   leerInventario: leerInventario, guardarInventario: guardarInventario,

@@ -190,6 +190,8 @@
       var quien = document.createElement('span');
       quien.textContent = x.nombre ? x.nombre + (x.dni ? ' · ' + x.dni : '') + (x.paciente ? ' · ' + x.paciente : '') : '';
       if (x.registrar) { quien.appendChild(document.createTextNode(' ')); quien.appendChild(tag('Registrar en recepción', 'fin')); }
+      if (x.practica && !x.dni && !x.anulada) quien.appendChild(tag('Práctica sin DNI', 'fin'));
+      if (x.anulada) quien.appendChild(tag('Devuelto: ' + x.anulada, 'fin'));
       tr.appendChild(celda(true, quien));
       tr.appendChild(celda(true, x.producto));
       tr.appendChild(celda(true, estadoHoja(x)));
@@ -255,7 +257,8 @@
     });
     var hoja2 = [['FECHA', 'BOLETA', 'PACIENTE', 'DNI', 'PREMIO', 'OBSERVACIÓN']];
     (datos.entregas || []).forEach(function (x) {
-      hoja2.push([fechaLima(x.fecha), x.boleta, x.nombre || '', x.dni || '', x.producto, x.registrar ? 'Registrar en recepción (no está en Odoo)' : '']);
+      var obs = x.anulada ? 'Devuelto al inventario: ' + x.anulada : x.registrar ? 'Registrar en recepción (no está en Odoo)' : (x.practica && !x.dni) ? 'Práctica sin DNI' : '';
+      hoja2.push([fechaLima(x.fecha), x.boleta, x.nombre || '', x.dni || '', x.producto, obs]);
     });
 
     var libro = XLSX.utils.book_new();

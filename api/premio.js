@@ -32,27 +32,29 @@ function responder(res, codigo, cuerpo) {
   res.status(codigo).json(cuerpo);
 }
 
-/* `practica`: solo entran los premios marcados practica:true en el
-   inventario (la bolsa ecologica y los sachets) y nunca un tratamiento. */
+/* `practica` (el codigo de la practica, o null): entran los premios
+   practica:true (bolsa ecologica y sachets) y las sesiones de regalo, estas
+   con la probabilidad propia de la practica (P.probPractica). */
 async function sortearYDescontar(boleta, cliente, practica) {
   for (var intento = 0; intento < 8; intento++) {
     var inv = await P.leerInventario();
     if (!inv) throw new Error('No hay inventario de premios cargado');
     var items = inv.datos.items;
     var posibles = practica
-      ? items.filter(function (i) { return i.practica && !i.especial; })
+      ? items.filter(function (i) { return i.especial || i.practica; })
       : items;
 
     var quedan = posibles.filter(function (i) { return i.cantidad > 0; });
     var sobres = Math.min(3, quedan.length);
-    var ganado = P.sortear(posibles);
+    var ganado = practica ? P.sortear(posibles, P.probPractica()) : P.sortear(posibles);
     if (!ganado) return { resultado: { premio: null, otros: [], sobres: 0 }, ganado: null };
 
     ganado.cantidad -= 1;
     inv.datos.entregas = inv.datos.entregas || [];
     var entrega = { fecha: new Date().toISOString(), boleta: boleta, id: ganado.id,
                     producto: ganado.servicio || ganado.producto,
-                    tipo: practica ? 'practica' : ganado.especial ? 'tratamiento' : 'producto' };
+                    tipo: ganado.especial ? 'tratamiento' : practica ? 'practica' : 'producto' };
+    if (practica) { entrega.practica = true; entrega.sesion = practica; }
     if (cliente) { entrega.dni = cliente.dni; entrega.nombre = cliente.nombre; }
     if (cliente && cliente.codigo) entrega.paciente = cliente.codigo;
     if (cliente && cliente.enOdoo === false) entrega.registrar = true;   // no esta en Odoo: recepcion lo registra
@@ -114,8 +116,9 @@ module.exports = async function (req, res) {
   if (req.method !== 'POST') return responder(res, 405, { ok: false });
 
   /* PRACTICA (se entra tocando el logo, sin DNI): tambien da premio de
-     verdad, pero solo bolsa ecologica y sachets, y uno por practica: cada
-     practica trae su propio codigo y ese es su candado. */
+     verdad (bolsa ecologica, sachets y, muy rara vez, una sesion de regalo)
+     y uno por practica: cada practica trae su propio codigo, que es su
+     candado. El DNI se registra despues de ver el premio (api/registro.js). */
   var practica = !!(req.body && req.body.practica);
   var boleta, ruta;
   if (practica) {
@@ -146,21 +149,15 @@ module.exports = async function (req, res) {
 
     /* Quien es: su DNI y su nombre, sacados de Odoo con la boleta. Si Odoo
        no responde, el premio se entrega igual. */
+    /* (en la practica el DNI se pide DESPUES de ver el premio: api/registro.js) */
     var cliente = null;
     if (!practica) {
       try { cliente = await Odoo.clienteDeBoleta(boleta); } catch (e) { console.error(e); }
-    } else {
-      /* en la practica, el DNI que registro antes de abrir el sobre (api/registro.js) */
-      var reg = await P.leerJson('premios-practica/' + req.body.sesion + '-registro.json');
-      if (!reg) {
-        await P.guardarJson(ruta, { estado: 'sin-registro', fecha: '2000-01-01T00:00:00Z' }, { allowOverwrite: true });
-        return responder(res, 403, { ok: false, mensaje: 'Primero registra tu DNI.' });
-      }
-      cliente = reg.datos;
     }
 
-    var s = await sortearYDescontar(boleta, cliente, practica);
-    await P.guardarJson(ruta, { estado: 'entregado', fecha: new Date().toISOString(), resultado: s.resultado },
+    var s = await sortearYDescontar(boleta, cliente, practica ? sesion : null);
+    await P.guardarJson(ruta, { estado: 'entregado', fecha: new Date().toISOString(), resultado: s.resultado,
+                                id: s.ganado && s.ganado.id, juego: String((req.body && req.body.juego) || '').slice(0, 60) },
                         { allowOverwrite: true });
 
     if (s.ganado && !practica) {
@@ -174,5 +171,5 @@ module.exports = async function (req, res) {
   }
 };
 
-/* para probar la conexion con la hoja sin sortear nada */
+/* para probar la conexion con la hoja sin sortear nada, y para registro.js */
 module.exports.aLaHoja = aLaHoja;

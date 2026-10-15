@@ -701,8 +701,16 @@
       dom.modalRepetir.hidden = true;
       dom.modalPremio.hidden = false;
       dom.modalSello.textContent = '🎁';
-      /* antes de los sobres, su DNI: nadie se lleva un premio sin registrar */
-      registroPractica(function () { prepararSobres(function () { volverSolo(15); }); });
+      /* sobres -> ve su premio -> y recien ahi su DNI: nadie se lleva un
+         premio sin registrar. No vuelve solo al inicio hasta registrarlo. */
+      prepararSobres(function (ganado) {
+        relojSalida = setTimeout(function () {
+          registroPractica(ganado, function (aviso) {
+            if (aviso) dom.modalMensaje.textContent = aviso;
+            volverSolo(aviso ? 8 : 10);
+          });
+        }, 3500);
+      }, true);
       mostrarModal();
       return;
     }
@@ -837,9 +845,10 @@
      --------------------------------------------------------------- */
   var registrando = false;       // escribiendo su DNI: Retroceso no saca al menu
 
-  function registroPractica(alListo) {
+  function registroPractica(ganado, alListo) {
     var caja = dom.modalPremio;
     registrando = true;
+    dom.modal.classList.remove('revelado');
     dom.modal.classList.add('registrando');
     dom.modalTitulo.textContent = '¡Lo lograste!';
     var paso = 'dni', escrito = '', dniOk = '', ocupado = false;
@@ -903,12 +912,23 @@
       global.Acceso.registrarPractica(dni, paso === 'nombre' ? escrito.trim() : undefined).then(function (d) {
         ocupado = false; boton.disabled = false;
         if (dom.modal.hidden) return;
-        if (!d.ok) { mal(d.mensaje || 'No se pudo registrar.'); return; }
+        if (!d.ok && !d.devuelto) { mal(d.mensaje || 'No se pudo registrar.'); return; }
         if (d.falta === 'nombre') { dniOk = dni; pasoNombre(); return; }
         document.removeEventListener('keydown', tecla);
         registrando = false;
         dom.modal.classList.remove('registrando');
-        dom.modalTitulo.textContent = '¡Muy bien, lo lograste!';
+        dom.modal.classList.add('revelado');
+        /* listo: una confirmacion corta, en la misma vista quieta */
+        caja.innerHTML = '';
+        if (d.devuelto) {
+          dom.modalTitulo.textContent = 'Ya tienes tu premio';
+          caja.appendChild(h('p', { class: 'sobres-pista' }, d.mensaje));
+        } else {
+          dom.modalTitulo.textContent = '¡Premio registrado!';
+          caja.appendChild(h('span', { class: 'premio-cinta' }, '✓ Registrado'));
+          caja.appendChild(h('strong', { class: 'premio-tarjeta-nombre registro-listo' }, nombrePremio(ganado)));
+          caja.appendChild(h('span', { class: 'premio-pie' }, 'Recógelo en recepción con tu DNI'));
+        }
         alListo();
       });
     }
@@ -926,7 +946,7 @@
 
     caja.innerHTML = '';
     caja.classList.remove('eligiendo');
-    caja.appendChild(h('span', { class: 'premio-cinta' }, '¡Has ganado un premio!'));
+    caja.appendChild(h('span', { class: 'premio-cinta' }, 'Tu premio: ' + nombrePremio(ganado)));
     caja.appendChild(titulo);
     caja.appendChild(campo);
     caja.appendChild(aviso);
@@ -1029,7 +1049,7 @@
       dom.modalSello.textContent = '🏆';
       confeti();
       sonar('premio');
-      if (typeof alAbrir === 'function') alAbrir();
+      if (typeof alAbrir === 'function') alAbrir(ganado);
     }, 900);
   }
 
