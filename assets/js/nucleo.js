@@ -927,7 +927,8 @@
           dom.modalTitulo.textContent = '¡Premio registrado!';
           caja.appendChild(h('span', { class: 'premio-cinta' }, '✓ Registrado'));
           caja.appendChild(h('strong', { class: 'premio-tarjeta-nombre registro-listo' }, nombrePremio(ganado)));
-          caja.appendChild(h('span', { class: 'premio-pie' }, 'Recógelo en recepción con tu DNI'));
+          caja.appendChild(h('span', { class: 'premio-pie' }, ganado.especial
+            ? 'Reserva tu cita en recepción con tu DNI' : 'Recógelo en recepción con tu DNI'));
         }
         alListo();
       });
@@ -1039,7 +1040,9 @@
          sin los datos de la partida), que entre entera sin desplazarse */
       dom.modal.classList.add('revelado');
       dom.modalTitulo.textContent = '¡Ganaste!';
-      caja.appendChild(h('span', { class: 'premio-pie' }, 'Enséñalo en recepción antes de irte'));
+      /* una sesion de regalo no se recoge: se agenda */
+      caja.appendChild(h('span', { class: 'premio-pie' }, ganado.especial
+        ? 'Reserva tu cita en recepción' : 'Enséñalo en recepción antes de irte'));
 
       /* se repite la animacion de entrada de la tarjeta */
       caja.classList.remove('premio');
