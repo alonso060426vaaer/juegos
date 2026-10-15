@@ -1,5 +1,5 @@
 /* ==========================================================================
-   JUEGO 7 - ROMPE LADRILLOS (el arcade clasico de toda la vida)
+   JUEGO 7 - ROMPE ARRUGAS (el arcade clasico de romper ladrillos)
    Version de cristal: el fondo con el rostro, los ladrillos, la paleta y la
    bola salen de las fotos de assets/img/ladrillos, y el marcador (score,
    level, lives) va dentro del lienzo, en una barra de cristal.

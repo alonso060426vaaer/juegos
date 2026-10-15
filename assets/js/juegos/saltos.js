@@ -1,5 +1,5 @@
 /* ==========================================================================
-   JUEGO 9 - SALTO INFINITO (al estilo del clasico de saltar entre bloques)
+   JUEGO 9 - SALTO AL GLOW (al estilo del clasico de saltar entre bloques)
    La que salta es la doctora. Se arranca desde la ciudad de la foto, con sus
    arboles y matas, y el viaje sigue por etapas: el mar de nubes con globos,
    la aurora y al final los planetas. Las plataformas son de hierba (fotos)

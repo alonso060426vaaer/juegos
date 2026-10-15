@@ -1,5 +1,5 @@
 /* ==========================================================================
-   JUEGO - ADIVINA LA PALABRA: cuatro pistas y un hueco por letra
+   JUEGO - PALABRA SECRETA: cuatro pistas y un hueco por letra
    Al estilo del clasico "4 fotos 1 palabra", con los tratamientos de la
    clinica: cuatro fotos de verdad y el cliente adivina cual es.
    Viste el tema crema (crema, oro y marron): el fondo con las ondas y las

@@ -1,5 +1,5 @@
 /* ==========================================================================
-   JUEGO 3 - MITOS Y VERDADES: decide si la frase es cierta o es un mito
+   JUEGO 3 - ¿MITO O VERDAD?: decide si la frase es cierta o es un mito
    Viste el tema botanico (crema, verde salvia y oro): insignias del
    marcador, barra de progreso, tarjeta de pregunta, botones Verdad y Mito
    con sus iconos y la mascota que comenta desde su bocadillo. Las imagenes

@@ -1,5 +1,5 @@
 /* ==========================================================================
-   JUEGO 8 - PATOS AL VUELO (edicion playa: ¡atrapa a la doctora!)
+   JUEGO 8 - ATRAPA A LA DOCTORA (antes Patos al Vuelo, edicion playa)
    Toca a la doctora antes de que se escape: sale una pelota de billetes
    hacia donde tocaste y, si le da, llueven billetes con sonido de caja.
    Tres billetes por doctora, tres vidas y tres niveles cortos.

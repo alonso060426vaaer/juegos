@@ -1,5 +1,5 @@
 /* ==========================================================================
-   JUEGO 10 - FLAPPY BIRD (el avion de la doctora)
+   JUEGO 10 - VUELO GLOW (el avion de la doctora)
    Toca la pantalla para que el avion suba; si no tocas, cae. Hay que pasar
    entre los tubos sin chocar. Cada tubo que dejas atras es un punto.
 
