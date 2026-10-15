@@ -693,7 +693,7 @@ button{ font:inherit; color:inherit; touch-action:manipulation; }
 .modal.registrando #modal-mensaje,
 .modal.registrando .modal-botones{ display:none; }
 .modal.registrando .modal-logo{ height:min(4.5em, 8vh); margin-bottom:.2em; }
-.modal.registrando .modal-caja{ padding-top:1.1em; padding-bottom:1.1em; }
+.modal.registrando .modal-caja{ overflow:hidden; padding-top:1.1em; padding-bottom:1.1em; }
 .modal.registrando .premio{ margin-top:.4em; align-self:stretch; width:100%; box-sizing:border-box; }
 .modal.registrando .registro-tecla.ancha{ font-size:.85em; }
 .modal.revelado .modal-logo{ height:min(4.5em, 8vh); margin-bottom:.2em; }
