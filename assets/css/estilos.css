@@ -684,10 +684,18 @@ button{ font:inherit; color:inherit; touch-action:manipulation; }
 }
 .premio-nota{ font-size:.9em; color:var(--tinta-2); text-align:center; }
 
-/* --- abierto el sobre: una sola vista, quieta, solo con el premio --- */
+/* --- abierto el sobre (y mientras registra su DNI): una sola vista,
+   quieta, sin los datos de la partida --- */
 .modal.revelado .modal-datos,
 .modal.revelado #modal-mensaje,
-.modal.revelado .modal-botones{ display:none; }
+.modal.revelado .modal-botones,
+.modal.registrando .modal-datos,
+.modal.registrando #modal-mensaje,
+.modal.registrando .modal-botones{ display:none; }
+.modal.registrando .modal-logo{ height:min(4.5em, 8vh); margin-bottom:.2em; }
+.modal.registrando .modal-caja{ padding-top:1.1em; padding-bottom:1.1em; }
+.modal.registrando .premio{ margin-top:.4em; }
+.modal.registrando .registro-tecla.ancha{ font-size:.85em; }
 .modal.revelado .modal-logo{ height:min(4.5em, 8vh); margin-bottom:.2em; }
 .modal.revelado .modal-caja{ overflow:hidden; padding-top:1.1em; padding-bottom:1.1em; }
 .modal.revelado #modal-titulo{ margin-bottom:.1em; }
@@ -714,10 +722,11 @@ button{ font:inherit; color:inherit; touch-action:manipulation; }
 .registro-campo.vacio{ color:rgba(123,110,96,.4); font-weight:500; }
 .registro-aviso{ margin:.1em 0 .3em; min-height:1.3em; font-size:.82em; color:var(--tinta-2); text-align:center; }
 .registro-aviso.mal{ color:var(--rojo); font-weight:600; }
-.registro-teclado{ display:grid; gap:.35em; width:100%; }
+.registro-campo, .registro-teclado, .registro-enviar{ align-self:stretch; }
+.registro-teclado{ display:grid; gap:.4em; width:100%; }
 .registro-tecla{
-  padding:.45em 0;
-  font-family:var(--serif); font-size:1.1em; font-weight:600;
+  padding:.5em 0;
+  font-family:var(--serif); font-size:1.3em; font-weight:600;
   color:var(--tinta);
   background:linear-gradient(180deg, #FFFEFA 0%, #FAF3E6 58%, #F1E4CC 100%);
   border:1px solid rgba(190,158,98,.42);

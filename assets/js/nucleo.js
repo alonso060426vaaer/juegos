@@ -655,7 +655,7 @@
   }
 
   function abrirModal(op) {
-    dom.modal.classList.remove('revelado');
+    dom.modal.classList.remove('revelado', 'registrando');
     var viejo = dom.modal.querySelector('.modal-caja > .premio-volver');
     if (viejo) viejo.parentNode.removeChild(viejo);
     var extras = dom.modal.querySelectorAll('.practica-extra');
@@ -840,6 +840,8 @@
   function registroPractica(alListo) {
     var caja = dom.modalPremio;
     registrando = true;
+    dom.modal.classList.add('registrando');
+    dom.modalTitulo.textContent = '¡Lo lograste!';
     var paso = 'dni', escrito = '', dniOk = '', ocupado = false;
 
     function teclado(teclas, columnas) {
@@ -905,6 +907,8 @@
         if (d.falta === 'nombre') { dniOk = dni; pasoNombre(); return; }
         document.removeEventListener('keydown', tecla);
         registrando = false;
+        dom.modal.classList.remove('registrando');
+        dom.modalTitulo.textContent = '¡Muy bien, lo lograste!';
         alListo();
       });
     }
