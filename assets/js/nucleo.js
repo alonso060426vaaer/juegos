@@ -1094,9 +1094,10 @@
       var a0 = i * ang, a1 = a0 + ang;
       var color = s.clave === 'sesion' ? '#3B2E22' : i % 2 ? '#E9D3A8' : '#FBF4E6';
       svg += '<path d="M0 0 L' + punto(a0, r) + ' A' + r + ' ' + r + ' 0 0 1 ' + punto(a1, r) + ' Z" fill="' + color + '" stroke="#B9924F" stroke-width="1.2"/>';
-      var am = a0 + ang / 2, pr = punto(am, 62).split(' ');
-      svg += '<text x="' + pr[0] + '" y="' + pr[1] + '" transform="rotate(' + am + ' ' + pr[0] + ' ' + pr[1] + ')" text-anchor="middle" dominant-baseline="middle" ' +
-             'font-family="Cormorant Garamond, Georgia, serif" font-weight="700" font-size="' + (s.texto.length > 13 ? 8.4 : 9.6) + '" fill="' +
+      /* el texto va del centro hacia afuera, como en las ruletas de verdad */
+      var am = a0 + ang / 2, pr = punto(am, 61).split(' ');
+      svg += '<text x="' + pr[0] + '" y="' + pr[1] + '" transform="rotate(' + (am - 90) + ' ' + pr[0] + ' ' + pr[1] + ')" text-anchor="middle" dominant-baseline="middle" ' +
+             'font-family="Cormorant Garamond, Georgia, serif" font-weight="700" font-size="' + (s.texto.length > 13 ? 9 : 10.5) + '" fill="' +
              (s.clave === 'sesion' ? '#E9C98C' : '#5A4630') + '">' + s.texto + '</text>';
     });
     svg += '<circle r="23" fill="#8B6A38"/><circle r="21" fill="#B9924F"/>';
