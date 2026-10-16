@@ -217,15 +217,28 @@
 
     /* Tocando el logo: la RULETA de premios (una tirada por vez, con su
        propio codigo como en la practica; luego se registra el DNI). */
+    /* Tocando el logo salen DOS opciones, las dos sin compra: la ruleta o
+       jugar de prueba (los juegos en modo practica, premio al final y DNI
+       despues). Cada una con su propio codigo de practica. */
     function practicar() {
-      if (comprobando) return;
-      autorizado = true;
-      practica = true;
-      sesionPractica = codigoAlAzar();
-      comprobante = '';
-      App.pantallaCompleta();
+      if (comprobando || vista.querySelector('.acceso-opciones')) return;
       App.sonar('toque');
-      if (App.ruleta) App.ruleta(); else alEntrar();
+      function elegir(ruleta) {
+        autorizado = true;
+        practica = true;
+        sesionPractica = codigoAlAzar();
+        comprobante = '';
+        App.pantallaCompleta();
+        App.sonar('toque');
+        if (ruleta && App.ruleta) App.ruleta(); else alEntrar();
+      }
+      var capa = h('div', { class: 'acceso-opciones' },
+        h('div', { class: 'acceso-opciones-caja' },
+          h('p', { class: 'acceso-opciones-titulo' }, '¿Qué quieres hacer?'),
+          h('button', { class: 'btn btn-primario acceso-opcion', onclick: function () { elegir(true); } }, 'Girar la ruleta'),
+          h('button', { class: 'btn btn-primario acceso-opcion', onclick: function () { elegir(false); } }, 'Jugar de prueba'),
+          h('button', { class: 'acceso-opciones-cerrar', onclick: function () { App.sonar('toque'); capa.remove(); } }, 'Cancelar')));
+      vista.appendChild(capa);
     }
 
     var vista = h('section', { class: 'vista acceso' },

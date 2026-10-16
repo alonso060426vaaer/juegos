@@ -1411,3 +1411,22 @@ button{ font:inherit; color:inherit; touch-action:manipulation; }
   font:inherit; font-size:.9em; color:var(--tinta-2);
   background:transparent; border:0; text-decoration:underline; cursor:pointer;
 }
+
+/* --- logo JB: elegir ruleta o jugar de prueba (sin compra) --- */
+.acceso-opciones{
+  position:fixed; inset:0; z-index:60;
+  display:flex; align-items:center; justify-content:center; padding:16px;
+  background:rgba(43,33,24,.55);
+}
+.acceso-opciones-caja{
+  display:flex; flex-direction:column; align-items:stretch; gap:.7em;
+  width:min(92vw, 22em); padding:1.6em 1.4em 1.1em; box-sizing:border-box;
+  background:linear-gradient(180deg, #FFFEFA 0%, #FAF3E6 100%);
+  border-radius:1.4em; box-shadow:0 1.2em 3em rgba(0,0,0,.25); text-align:center;
+}
+.acceso-opciones-titulo{ margin:0 0 .3em; font-family:var(--serif); font-size:1.5em; font-weight:700; color:var(--tinta); }
+.acceso-opcion{ width:100%; justify-content:center; font-size:1.15em; padding:.85em 1em; }
+.acceso-opciones-cerrar{
+  margin-top:.2em; padding:.5em; font:inherit; font-size:.9em; color:var(--tinta-2);
+  background:transparent; border:0; text-decoration:underline; cursor:pointer;
+}
