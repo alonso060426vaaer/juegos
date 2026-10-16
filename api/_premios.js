@@ -91,11 +91,14 @@ function sortear(items, probForzada) {
     if (azar() < prob) return especiales[e];
   }
   var normales = quedan.filter(function (i) { return !i.especial; });
-  var total = normales.reduce(function (s, i) { return s + i.cantidad; }, 0);
+  /* `peso` (opcional, 1 si no hay) baja o sube un premio sin tocar su stock:
+     la bolsa playera lleva menos para que no salga tanto */
+  function peso(i) { return i.cantidad * (typeof i.peso === 'number' ? i.peso : 1); }
+  var total = normales.reduce(function (s, i) { return s + peso(i); }, 0);
   if (!total) return null;
   var tiro = azar() * total;
   for (var n = 0; n < normales.length; n++) {
-    tiro -= normales[n].cantidad;
+    tiro -= peso(normales[n]);
     if (tiro < 0) return normales[n];
   }
   return normales[normales.length - 1];

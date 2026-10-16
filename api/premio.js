@@ -48,7 +48,9 @@ async function sortearYDescontar(boleta, cliente, practica, juego, consuelo) {
       : items;
 
     var quedan = posibles.filter(function (i) { return i.cantidad > 0; });
-    var sobres = Math.min(3, quedan.length);
+    /* siempre 3 sobres: el premio ya esta sorteado, los sobres son la
+       eleccion; aunque solo queden 2 premios distintos se ensenan 3 */
+    var sobres = 3;
     var ganado = consuelo ? P.sortear(posibles, 0)
       : practica ? P.sortear(posibles, P.probPractica()) : P.sortear(posibles);
     if (!ganado) return { resultado: { premio: null, otros: [], sobres: 0 }, ganado: null };

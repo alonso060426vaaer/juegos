@@ -1090,13 +1090,13 @@
      --------------------------------------------------------------- */
   var SECTORES = [
     { clave: 'playera', texto: 'Bolsa playera' },
-    { clave: 'serum', texto: 'Sérum' },
+    { clave: 'otro', texto: 'Regalo sorpresa' },
     { clave: 'ecologica', texto: 'Bolsa ecológica' },
     { clave: 'playera', texto: 'Bolsa playera' },
     { clave: 'sesion', texto: 'Sesión de regalo' },
     { clave: 'playera', texto: 'Bolsa playera' },
     { clave: 'ecologica', texto: 'Bolsa ecológica' },
-    { clave: 'serum', texto: 'Sérum' }
+    { clave: 'otro', texto: 'Regalo sorpresa' }
   ];
 
   function claveSector(p) {
@@ -1104,7 +1104,7 @@
     var n = String(p.producto || '').toLowerCase();
     if (/playera/.test(n)) return 'playera';
     if (/ecol/.test(n)) return 'ecologica';
-    return 'serum';
+    return 'otro';           // neceser, agua termal...: cae en "Regalo sorpresa"
   }
 
   function ruedaSvg() {
