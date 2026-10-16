@@ -874,6 +874,25 @@
     var titulo = h('p', { class: 'sobres-pista' }, '');
     var zona = h('div', { class: 'registro-zona' });
     var boton = h('button', { class: 'btn btn-final registro-enviar', onclick: function () { enviar(); } }, 'Registrar mi premio');
+    /* no quiere dar su DNI ni su nombre: vuelve al inicio. Pide un segundo
+       toque para que un roce no le borre el registro. El premio queda en
+       el inventario como "Práctica sin DNI". */
+    var seguro = false, relojSeguro = null;
+    var saltar = h('button', { class: 'registro-saltar', onclick: function () {
+      if (ocupado) return;
+      sonar('toque');
+      if (!seguro) {
+        seguro = true;
+        saltar.textContent = '¿Seguro? Toca otra vez para volver al inicio';
+        relojSeguro = setTimeout(function () { seguro = false; saltar.textContent = 'No quiero registrarme · Volver al inicio'; }, 4000);
+        return;
+      }
+      clearTimeout(relojSeguro);
+      document.removeEventListener('keydown', tecla);
+      registrando = false;
+      dom.modal.classList.remove('registrando');
+      salir();
+    } }, 'No quiero registrarme · Volver al inicio');
 
     function pintar() {
       campo.textContent = escrito || (paso === 'dni' ? 'Tu DNI' : 'Apellidos y nombres');
@@ -956,6 +975,7 @@
     caja.appendChild(aviso);
     caja.appendChild(zona);
     caja.appendChild(boton);
+    caja.appendChild(saltar);
     pasoDni();
   }
 

@@ -738,6 +738,11 @@ button{ font:inherit; color:inherit; touch-action:manipulation; }
 .registro-tecla.borrar{ color:var(--oro-osc); }
 .registro-tecla.ancha{ grid-column:span 4; font-family:var(--sans); font-size:.8em; letter-spacing:.12em; }
 .registro-enviar{ width:100%; margin-top:.6em; }
+.registro-saltar{
+  margin-top:.45em; padding:.45em 1em;
+  font:inherit; font-size:.85em; color:var(--tinta-2);
+  background:transparent; border:0; text-decoration:underline; cursor:pointer;
+}
 .registro-listo{ display:block; margin:.35em 0 .1em; font-size:1.6em; }
 
 /* --- la tarjeta que sale del sobre (premio del inventario real) --- */
