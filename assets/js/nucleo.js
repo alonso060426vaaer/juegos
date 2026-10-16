@@ -707,9 +707,9 @@
         relojSalida = setTimeout(function () {
           registroPractica(ganado, function (aviso) {
             if (aviso) dom.modalMensaje.textContent = aviso;
-            volverSolo(aviso ? 8 : 10);
+            volverSolo(aviso ? 6 : 5);
           });
-        }, 3500);
+        }, 2000);
       }, true);
       mostrarModal();
       return;
@@ -733,7 +733,7 @@
       prepararSobres(function () {
         /* ya tiene su premio: tiempo para ensenarlo en recepcion, y luego
            la sala se prepara sola para el siguiente */
-        if (acaba && global.Acceso) volverSolo(15);
+        if (acaba && global.Acceso) volverSolo(6);     // corto: lo pidio el equipo para que la fila avance
       });
     } else {
       dom.modalPremio.hidden = true;
@@ -831,7 +831,7 @@
         caja.hidden = true;
         dom.modalSello.textContent = '✦';
         dom.modalMensaje.textContent = '¡Lo lograste! Los premios de hoy ya se entregaron todos. ¡Gracias por jugar!';
-        volverSolo(6);
+        volverSolo(4);
         return;
       }
       pintarSobres(d, alAbrir);
