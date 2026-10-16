@@ -215,8 +215,8 @@
     }
     document.addEventListener('keydown', tecleado);
 
-    /* Practica: para conocer los juegos sin gastar su compra. Se entra
-       tocando el logo; no da premio ni cuenta intentos. */
+    /* Tocando el logo: la RULETA de premios (una tirada por vez, con su
+       propio codigo como en la practica; luego se registra el DNI). */
     function practicar() {
       if (comprobando) return;
       autorizado = true;
@@ -225,7 +225,7 @@
       comprobante = '';
       App.pantallaCompleta();
       App.sonar('toque');
-      alEntrar();
+      if (App.ruleta) App.ruleta(); else alEntrar();
     }
 
     var vista = h('section', { class: 'vista acceso' },

@@ -1059,6 +1059,138 @@
     }, 900);
   }
 
+  /* ---------------------------------------------------------------
+     LA RULETA (se entra tocando el logo de la pantalla del DNI)
+
+     El premio lo decide el SERVIDOR, con las mismas reglas de la practica
+     (bolsas y sachets segun su stock, y una sesion de regalo con la
+     probabilidad de la practica). La ruleta solo lo muestra: gira hasta
+     el sector de ese premio. Luego se ve el premio y se registra el DNI
+     (registroPractica: Odoo, hoja del aniversario si es sesion de regalo).
+     --------------------------------------------------------------- */
+  var SECTORES = [
+    { clave: 'playera', texto: 'Bolsa playera' },
+    { clave: 'serum', texto: 'Sérum' },
+    { clave: 'ecologica', texto: 'Bolsa ecológica' },
+    { clave: 'playera', texto: 'Bolsa playera' },
+    { clave: 'sesion', texto: 'Sesión de regalo' },
+    { clave: 'playera', texto: 'Bolsa playera' },
+    { clave: 'ecologica', texto: 'Bolsa ecológica' },
+    { clave: 'serum', texto: 'Sérum' }
+  ];
+
+  function claveSector(p) {
+    if (p.especial) return 'sesion';
+    var n = String(p.producto || '').toLowerCase();
+    if (/playera/.test(n)) return 'playera';
+    if (/ecol/.test(n)) return 'ecologica';
+    return 'serum';
+  }
+
+  function ruedaSvg() {
+    var n = SECTORES.length, ang = 360 / n, r = 100, svg = '';
+    function punto(a, rr) { var t = (a - 90) * Math.PI / 180; return (rr * Math.cos(t)).toFixed(2) + ' ' + (rr * Math.sin(t)).toFixed(2); }
+    SECTORES.forEach(function (s, i) {
+      var a0 = i * ang, a1 = a0 + ang;
+      var color = s.clave === 'sesion' ? '#3B2E22' : i % 2 ? '#E9D3A8' : '#FBF4E6';
+      svg += '<path d="M0 0 L' + punto(a0, r) + ' A' + r + ' ' + r + ' 0 0 1 ' + punto(a1, r) + ' Z" fill="' + color + '" stroke="#B9924F" stroke-width="1.2"/>';
+      var am = a0 + ang / 2, pr = punto(am, 62).split(' ');
+      svg += '<text x="' + pr[0] + '" y="' + pr[1] + '" transform="rotate(' + am + ' ' + pr[0] + ' ' + pr[1] + ')" text-anchor="middle" dominant-baseline="middle" ' +
+             'font-family="Cormorant Garamond, Georgia, serif" font-weight="700" font-size="' + (s.texto.length > 13 ? 8.4 : 9.6) + '" fill="' +
+             (s.clave === 'sesion' ? '#E9C98C' : '#5A4630') + '">' + s.texto + '</text>';
+    });
+    svg += '<circle r="23" fill="#8B6A38"/><circle r="21" fill="#B9924F"/>';
+    return '<svg viewBox="-104 -104 208 208" aria-hidden="true"><circle r="103" fill="#B9924F"/>' + svg + '</svg>';
+  }
+
+  function ruleta() {
+    desmontar();
+    juegoActual = null;
+    marcarEnlace(null);
+    dom.barra.hidden = true;
+    var girando = false, giro = 0;
+
+    var rueda = h('div', { class: 'ruleta-rueda', html: ruedaSvg() });
+    var centro = h('img', { class: 'ruleta-centro', src: 'assets/img/sello-jb.png', alt: '' });
+    var aviso = h('p', { class: 'ruleta-aviso' }, '');
+    var boton = h('button', { class: 'btn btn-primario ruleta-girar', onclick: function () { girar(); } }, '¡Girar la ruleta!');
+
+    function girar() {
+      if (girando) return;
+      girando = true; boton.disabled = true; boton.textContent = 'Girando…';
+      aviso.textContent = '';
+      sonar('toque');
+      /* empieza a girar ya; cuando llega el premio, frena en su sector */
+      giro += 720;
+      rueda.style.transition = 'transform 1.6s linear';
+      rueda.style.transform = 'rotate(' + giro + 'deg)';
+      global.Acceso.pedirPremio('Ruleta', false).then(function (d) {
+        if (!d.ok || !d.premio) {
+          girando = false; boton.disabled = false; boton.textContent = '¡Girar la ruleta!';
+          aviso.textContent = d.ok ? 'Ya se entregaron todos los premios. ¡Gracias!' : (d.mensaje || 'No se pudo girar. Inténtalo otra vez.');
+          if (d.ok) volverAlInicio(4);
+          return;
+        }
+        var clave = claveSector(d.premio), cand = [];
+        SECTORES.forEach(function (s, i) { if (s.clave === clave) cand.push(i); });
+        var i = cand[Math.floor(Math.random() * cand.length)], ang = 360 / SECTORES.length;
+        /* el puntero esta arriba: el centro del sector i tiene que quedar en 0 grados */
+        var destino = 360 - (i * ang + ang / 2) + (Math.random() - 0.5) * ang * 0.5;
+        var vueltas = Math.ceil((giro + 1440) / 360) * 360;
+        giro = vueltas + destino;
+        rueda.style.transition = 'transform 4.2s cubic-bezier(.12,.6,.18,1)';
+        rueda.style.transform = 'rotate(' + giro + 'deg)';
+        setTimeout(function () { premioRuleta(d.premio); }, 4400);
+      });
+    }
+
+    function volverAlInicio(seg) { setTimeout(function () { salir(); }, seg * 1000); }
+
+    var vista = h('section', { class: 'vista ruleta' },
+      h('img', { class: 'ruleta-logo', src: 'assets/img/logo.png', alt: 'Joana Bernedo Body Aesthetics' }),
+      h('h1', { class: 'ruleta-titulo' }, 'Ruleta de premios'),
+      h('p', { class: 'ruleta-lema' }, 'Gira y descubre tu regalo'),
+      h('div', { class: 'ruleta-marco' },
+        h('span', { class: 'ruleta-puntero', 'aria-hidden': 'true' }),
+        rueda, centro),
+      boton, aviso,
+      h('button', { class: 'ruleta-volver', onclick: function () { if (!girando) { sonar('toque'); salir(); } } }, 'Volver'));
+    pintar(vista);
+    reprogramarReposo();
+  }
+
+  /** El premio de la ruleta: se ve en la misma vista quieta que el de los
+      sobres, y a los 2 s se le pide su DNI. */
+  function premioRuleta(p) {
+    clearTimeout(relojSalida);
+    var extras = dom.modal.querySelectorAll('.practica-extra');
+    for (var x = 0; x < extras.length; x++) extras[x].parentNode.removeChild(extras[x]);
+    dom.modal.classList.remove('registrando');
+    dom.modal.classList.add('revelado');
+    dom.modalSello.textContent = '🏆';
+    dom.modalTitulo.textContent = '¡Ganaste!';
+    dom.modalMensaje.textContent = '';
+    dom.modalDatos.innerHTML = '';
+    dom.modalRepetir.hidden = true;
+    var caja = dom.modalPremio;
+    caja.hidden = false;
+    caja.classList.remove('eligiendo');
+    caja.innerHTML = '';
+    caja.appendChild(h('span', { class: 'premio-cinta' }, '¡Has ganado!'));
+    caja.appendChild(tarjetaPremio(p));
+    caja.appendChild(h('span', { class: 'premio-pie' }, p.especial
+      ? 'Reserva tu cita en recepción' : 'Enséñalo en recepción antes de irte'));
+    confeti();
+    sonar('premio');
+    mostrarModal();
+    relojSalida = setTimeout(function () {
+      registroPractica(p, function (aviso) {
+        if (aviso) dom.modalMensaje.textContent = aviso;
+        volverSolo(aviso ? 6 : 5);
+      });
+    }, 2000);
+  }
+
   /** Abierto el sobre, la vuelta al inicio se hace sola: el cliente no
       tiene que tocar nada mas, y el siguiente se encuentra la pantalla del
       comprobante. Se ve la cuenta atras para que no parezca que se corta. */
@@ -1292,6 +1424,7 @@
     pintar: pintar,
     pantallaCompleta: function () { pantallaCompleta(); pintarBotonPantalla(); },
     menu: irMenu,
+    ruleta: ruleta,
     abrir: abrir,
     sonar: sonar,
     tono: tono,

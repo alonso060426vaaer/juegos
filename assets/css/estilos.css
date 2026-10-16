@@ -1367,3 +1367,42 @@ button{ font:inherit; color:inherit; touch-action:manipulation; }
   .acceso-teclado{ gap:.45em; }
   .acceso-tecla{ font-size:1.45em; padding:.38em 0; }
 }
+
+/* =====================================================================
+   RULETA DE PREMIOS (tocando el logo de la pantalla del DNI)
+   ===================================================================== */
+.vista.ruleta{
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:.6em; padding:1.2em 1em; text-align:center;
+  background:radial-gradient(120% 80% at 50% 0%, #FFFFFF 0%, var(--crema) 55%, #F3E6CF 100%);
+}
+.ruleta-logo{ height:min(6em, 10vh); width:auto; }
+.ruleta-titulo{ margin:0; font-family:var(--serif); font-size:2.4em; font-weight:600; line-height:1.05; }
+.ruleta-lema{ margin:0 0 .4em; color:var(--tinta-2); }
+.ruleta-marco{
+  position:relative;
+  width:min(84vw, 56vh, 32em); aspect-ratio:1;
+  filter:drop-shadow(0 .8em 1.6em rgba(120,90,45,.28));
+}
+.ruleta-rueda{ position:absolute; inset:0; will-change:transform; }
+.ruleta-rueda svg{ width:100%; height:100%; display:block; }
+.ruleta-centro{
+  position:absolute; left:50%; top:50%; width:19%; height:19%;
+  transform:translate(-50%,-50%);
+  pointer-events:none;
+}
+.ruleta-puntero{
+  position:absolute; left:50%; top:-.35em; z-index:2;
+  width:0; height:0; transform:translateX(-50%);
+  border-left:1.1em solid transparent; border-right:1.1em solid transparent;
+  border-top:1.9em solid var(--oro-osc);
+  filter:drop-shadow(0 .2em .25em rgba(60,40,20,.35));
+}
+.ruleta-girar{ min-width:min(80vw, 18em); margin-top:.6em; padding:.85em 1.6em; font-size:1.25em; border-radius:999px; }
+.ruleta-girar[disabled]{ opacity:.75; }
+.ruleta-aviso{ min-height:1.3em; margin:.1em 0 0; color:var(--rojo); font-weight:600; }
+.ruleta-volver{
+  margin-top:.2em; padding:.4em 1.2em;
+  font:inherit; font-size:.9em; color:var(--tinta-2);
+  background:transparent; border:0; text-decoration:underline; cursor:pointer;
+}
