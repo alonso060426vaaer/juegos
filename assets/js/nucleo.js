@@ -690,14 +690,15 @@
        --------------------------------------------------------------- */
     dom.modalPremio.innerHTML = '';
     if (enPractica()) {
-      if (!op.premio) { finPractica(op); return; }
-      /* gano en la practica: tambien hay sobres (solo bolsa y sachets, los
-         elige el servidor) y al abrir el suyo vuelve solo al inicio, asi
-         que cada practica da como mucho un premio */
+      /* en la practica TODOS se llevan premio: si llego a la meta, de los de
+         practica (y muy rara vez una sesion de regalo); si no, uno de
+         consuelo (los mas baratos: sobre todo bolsas). Al abrir el suyo y
+         registrar su DNI vuelve solo al inicio: un premio por practica. */
+      var consueloP = !op.premio;
       clearTimeout(relojSalida);
       dom.modal.classList.toggle('con-datos', (op.datos || []).length > 0);
-      dom.modalTitulo.textContent = '¡Muy bien, lo lograste!';
-      dom.modalMensaje.textContent = '¡Excelente partida! Elige tu sobre.';
+      dom.modalTitulo.textContent = consueloP ? '¡Gracias por jugar!' : '¡Muy bien, lo lograste!';
+      dom.modalMensaje.textContent = consueloP ? 'Te llevas un premio de regalo. Elige tu sobre.' : '¡Excelente partida! Elige tu sobre.';
       dom.modalRepetir.hidden = true;
       dom.modalPremio.hidden = false;
       dom.modalSello.textContent = '🎁';
@@ -710,7 +711,7 @@
             volverSolo(aviso ? 6 : 5);
           });
         }, 2000);
-      }, true);
+      }, consueloP);
       mostrarModal();
       return;
     }
@@ -726,7 +727,9 @@
     var elPremio = ultimo ? premioGanado : null;
     var sinPremio = ultimo && !premioGanado;
 
-    if (elPremio) {
+    /* TODOS se llevan premio: quien no llego a la meta en sus intentos
+       recibe uno de consuelo (los mas baratos: sobre todo bolsas) */
+    if (elPremio || (sinPremio && global.Acceso)) {
       dom.modalPremio.hidden = false;
       esperandoSobre = true;
       dom.modalSello.textContent = '🎁';
@@ -734,7 +737,7 @@
         /* ya tiene su premio: tiempo para ensenarlo en recepcion, y luego
            la sala se prepara sola para el siguiente */
         if (acaba && global.Acceso) volverSolo(6);     // corto: lo pidio el equipo para que la fila avance
-      });
+      }, !elPremio);
     } else {
       dom.modalPremio.hidden = true;
     }
@@ -749,8 +752,8 @@
 
     clearTimeout(relojSalida);
     if (sinPremio) {
-      dom.modalTitulo.textContent = '¡Buena suerte!';
-      dom.modalMensaje.textContent = 'Esta vez no se pudo. ¡Nos vemos el próximo año!';
+      dom.modalTitulo.textContent = '¡Gracias por jugar!';
+      dom.modalMensaje.textContent = 'Te llevas un premio de regalo. Elige tu sobre.';
     } else if (op.premio) {
       /* gano esta partida: se le felicita, sea el intento que sea */
       dom.modalTitulo.textContent = '¡Muy bien, lo lograste!';
@@ -810,13 +813,13 @@
      si se acabo todo no hay sobres. Los otros sobres ensenan premios que
      tambien quedaban, para que se vea que habia mas cosas en juego.
      --------------------------------------------------------------- */
-  function prepararSobres(alAbrir) {
+  function prepararSobres(alAbrir, consuelo) {
     var caja = dom.modalPremio;
     caja.innerHTML = '';
     caja.classList.remove('eligiendo');
     caja.appendChild(h('p', { class: 'sobres-pista' }, 'Preparando tus sobres…'));
 
-    global.Acceso.pedirPremio(juegoActual && juegoActual.nombre).then(function (d) {
+    global.Acceso.pedirPremio(juegoActual && juegoActual.nombre, !!consuelo).then(function (d) {
       if (dom.modal.hidden) return;           // ya se fue de esta pantalla
       caja.innerHTML = '';
       if (!d.ok) {

@@ -35,18 +35,22 @@ function responder(res, codigo, cuerpo) {
 /* `practica` (el codigo de la practica, o null): entran los premios
    practica:true (bolsa ecologica y sachets) y las sesiones de regalo, estas
    con la probabilidad propia de la practica (P.probPractica). */
-async function sortearYDescontar(boleta, cliente, practica, juego) {
+async function sortearYDescontar(boleta, cliente, practica, juego, consuelo) {
   for (var intento = 0; intento < 8; intento++) {
     var inv = await P.leerInventario();
     if (!inv) throw new Error('No hay inventario de premios cargado');
     var items = inv.datos.items;
-    var posibles = practica
-      ? items.filter(function (i) { return i.especial || i.practica; })
+    /* consuelo (no llego a la meta, pero TODOS se llevan algo): solo los
+       baratos, los marcados practica:true (sobre todo bolsas), nunca una
+       sesion de regalo */
+    var posibles = consuelo ? items.filter(function (i) { return i.practica && !i.especial; })
+      : practica ? items.filter(function (i) { return i.especial || i.practica; })
       : items;
 
     var quedan = posibles.filter(function (i) { return i.cantidad > 0; });
     var sobres = Math.min(3, quedan.length);
-    var ganado = practica ? P.sortear(posibles, P.probPractica()) : P.sortear(posibles);
+    var ganado = consuelo ? P.sortear(posibles, 0)
+      : practica ? P.sortear(posibles, P.probPractica()) : P.sortear(posibles);
     if (!ganado) return { resultado: { premio: null, otros: [], sobres: 0 }, ganado: null };
 
     ganado.cantidad -= 1;
@@ -56,6 +60,7 @@ async function sortearYDescontar(boleta, cliente, practica, juego) {
                     tipo: ganado.especial ? 'tratamiento' : practica ? 'practica' : 'producto' };
     if (practica) { entrega.practica = true; entrega.sesion = practica; }
     if (juego) entrega.juego = String(juego).slice(0, 60);
+    if (consuelo) entrega.consuelo = true;
     if (cliente) { entrega.dni = cliente.dni; entrega.nombre = cliente.nombre; }
     if (cliente && cliente.codigo) entrega.paciente = cliente.codigo;
     if (cliente && cliente.enOdoo === false) entrega.registrar = true;   // no esta en Odoo: recepcion lo registra
@@ -162,7 +167,8 @@ module.exports = async function (req, res) {
       try { cliente = await Odoo.clienteDeBoleta(boleta); } catch (e) { console.error(e); }
     }
 
-    var s = await sortearYDescontar(boleta, cliente, practica ? sesion : null, req.body && req.body.juego);
+    var s = await sortearYDescontar(boleta, cliente, practica ? sesion : null, req.body && req.body.juego,
+                                    !!(req.body && req.body.consuelo));
     await P.guardarJson(ruta, { estado: 'entregado', fecha: new Date().toISOString(), resultado: s.resultado,
                                 id: s.ganado && s.ganado.id, juego: String((req.body && req.body.juego) || '').slice(0, 60) },
                         { allowOverwrite: true });

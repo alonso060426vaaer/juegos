@@ -282,14 +282,15 @@
         .catch(function () { return { ok: false, mensaje: 'Sin conexión. Inténtalo otra vez.' }; });
     },
 
-    pedirPremio: function (juego) {
+    pedirPremio: function (juego, consuelo) {
       return fetch(BASE_API + 'premio', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         /* el juego va a su hoja del aniversario junto al premio */
+        /* consuelo: no llego a la meta, pero igual se lleva un premio (de los baratos) */
         body: JSON.stringify(practica
-          ? { practica: true, sesion: sesionPractica, juego: juego || '' }
-          : { turno: turno, juego: juego || '' })
+          ? { practica: true, sesion: sesionPractica, juego: juego || '', consuelo: !!consuelo }
+          : { turno: turno, juego: juego || '', consuelo: !!consuelo })
       })
         .then(function (resp) { return resp.json(); })
         .catch(function () { return { ok: false, mensaje: 'Sin conexión.' }; });
